@@ -18,23 +18,12 @@
 # Transform a unified diff from stdin to a colored
 # side-by-side HTML page on stdout.
 #
-# Author: Olivier MATZ <zer0@droids-corp.org>
+# Authors: Olivier MATZ <zer0@droids-corp.org>
+#          Alan De Smet <adesmet@cs.wisc.edu>
 #
 # Inspired by diff2html.rb from Dave Burt <dave (at) burt.id.au>
 # (mainly for html theme)
 #
-# Changed by Alan De Smet <adesmet@cs.wisc.edu> 2009-01-25
-# - Remove headers and footers that are undesirable for for CVSTrac
-#   integration.
-# - Change style sheet to own preferences
-# - Adjust LINESIZE code to reset counter and allow breaks whenever 
-#   WORDBREAK characters are encountered.
-# - Don't display offset info (it's redundant with the line numbers)
-#   instead show vertical ellipsis
-# - If part of a "change" is actually blank, it's an addition or
-#   deletion, not a "change" where the entire line changed.
-# - Don't display "\" for end of line; unnecessary noise.
-
 # TODO:
 # - The sane function currently mashes non-ASCII characters to "."
 #   Instead be clever and convert to something like "xF0" 
@@ -43,13 +32,50 @@
 #   and display those directly.
 
 
-import sys, re, htmlentitydefs
+import sys, re, htmlentitydefs, getopt
 
-html_hdr="""
-		<table class="diff">
+# minimum line size, we add a zero-sized breakable space every
+# LINESIZE characters
+linesize = 20
+tabsize = 8
+inputfile = sys.stdin
+outputfile = sys.stdout
+exclude_headers = False
+show_CR = False
+show_hunk_infos = False
+
+
+html_hdr="""<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+            <html><head>
+		<meta name="generator" content="diff2html.rb" />
+		<title>HTML Diff</title>
+		<style>
+			table { border:0px; border-collapse:collapse; width: 100%; font-size:0.75em; font-family: Lucida Console, monospace }
+			td.line { color:#8080a0 }
+			th { background: black; color: white }
+			tr.diffunmodified td { background: #D0D0E0 }
+			tr.diffhunk td { background: #A0A0A0 }
+			tr.diffadded td { background: #CCFFCC }
+			tr.diffdeleted td { background: #FFCCCC }
+			tr.diffchanged td { background: #FFFFA0 }
+			span.diffchanged2 { background: #E0C880 }
+			span.diffponct { color: #B08080 }
+			tr.diffmisc td {}
+			tr.diffseparator td {}
+		</style>
+		</head>
+		<body>
 """
 
 html_footer="""
+</body></html>
+"""
+
+table_hdr="""
+		<table class="diff">
+"""
+
+table_footer="""
 </table>
 """
 
@@ -61,10 +87,6 @@ add_cpt, del_cpt = 0,0
 line1, line2 = 0,0
 hunk_off1, hunk_size1, hunk_off2, hunk_size2 = 0,0,0,0
 
-# minimum line size, we add a zero-sized breakable space every
-# LINESIZE characters
-LINESIZE=20
-TAB=4
 
 # Characters we're willing to word wrap on
 WORDBREAK=" \t;.,/):"
@@ -161,15 +183,15 @@ def convert(s, linesize=0, ponct=0):
 
         # special highlighted chars
         elif c=="\t" and ponct==1:
-            n = TAB-(i%TAB)
+            n = tabsize-(i%tabsize)
             if n==0:
-                n=TAB
+                n=tabsize
             t += ('<span class="diffponct">&raquo;</span>'+'&nbsp;'*(n-1))
         elif c==" " and ponct==1:
             t += '<span class="diffponct">&middot;</span>'
         elif c=="\n" and ponct==1:
-            1 # Quietly drop it.
-            #t += '<span class="diffponct">\</span>'
+            if show_CR:
+                t += '<span class="diffponct">\</span>'
         else:
             t += c
             i += 1
@@ -185,22 +207,21 @@ def convert(s, linesize=0, ponct=0):
 
 
 def add_comment(s):
-    sys.stdout.write('<tr class="diffmisc"><td colspan="4">%s</td></tr>\n'%convert(s))
+    outputfile.write('<tr class="diffmisc"><td colspan="4">%s</td></tr>\n'%convert(s))
 
 def add_filename(f1, f2):
-    sys.stdout.write("<tr><th colspan='2'>%s</th>"%convert(f1, linesize=LINESIZE))
-    sys.stdout.write("<th colspan='2'>%s</th></tr>\n"%convert(f2, linesize=LINESIZE))
+    outputfile.write("<tr><th colspan='2'>%s</th>"%convert(f1, linesize=linesize))
+    outputfile.write("<th colspan='2'>%s</th></tr>\n"%convert(f2, linesize=linesize))
 
 def add_hunk():
-    global hunk_off1
-    global hunk_size1
-    global hunk_off2
-    global hunk_size2
-	# Don't bother displaying, it's redundant with the line numbers.
-    #sys.stdout.write('<tr class="diffhunk"><td colspan="2">Offset %d, %d lines modified</td>'%(hunk_off1, hunk_size1))
-    #sys.stdout.write('<td colspan="2">Offset %d, %d lines modified</td></tr>\n'%(hunk_off2, hunk_size2))
-	# &#8942; - vertical ellipsis
-    sys.stdout.write('<tr class="diffhunk"><td colspan="2">&#8942;</td><td colspan="2">&#8942;</td></tr>');
+    global hunk_off1, hunk_size1, hunk_off2, hunk_size2
+    global show_hunk_infos
+    if show_hunk_infos:
+        outputfile.write('<tr class="diffhunk"><td colspan="2">Offset %d, %d lines modified</td>'%(hunk_off1, hunk_size1))
+        outputfile.write('<td colspan="2">Offset %d, %d lines modified</td></tr>\n'%(hunk_off2, hunk_size2))
+    else:
+        # &#8942; - vertical ellipsis
+        outputfile.write('<tr class="diffhunk"><td colspan="2">&#8942;</td><td colspan="2">&#8942;</td></tr>');
 
 
 def add_line(s1, s2):
@@ -219,26 +240,26 @@ def add_line(s1, s2):
         type="changed"
         s1,s2 = linediff(s1, s2)
 
-    sys.stdout.write('<tr class="diff%s">'%type)
+    outputfile.write('<tr class="diff%s">'%type)
     if s1!=None and s1!="":
-        sys.stdout.write('<td class="diffline">%d </td>'%line1)
-        sys.stdout.write('<td class="diffpresent">')
-        sys.stdout.write(convert(s1, linesize=LINESIZE, ponct=1))
-        sys.stdout.write('</td>')
+        outputfile.write('<td class="diffline">%d </td>'%line1)
+        outputfile.write('<td class="diffpresent">')
+        outputfile.write(convert(s1, linesize=linesize, ponct=1))
+        outputfile.write('</td>')
     else:
         s1=""
-        sys.stdout.write('<td colspan="2"> </td>')
+        outputfile.write('<td colspan="2"> </td>')
     
     if s2!=None and s2!="":
-        sys.stdout.write('<td class="diffline">%d </td>'%line2)
-        sys.stdout.write('<td class="diffpresent">')
-        sys.stdout.write(convert(s2, linesize=LINESIZE, ponct=1))
-        sys.stdout.write('</td>')
+        outputfile.write('<td class="diffline">%d </td>'%line2)
+        outputfile.write('<td class="diffpresent">')
+        outputfile.write(convert(s2, linesize=linesize, ponct=1))
+        outputfile.write('</td>')
     else:
         s2=""
-        sys.stdout.write('<td colspan="2"></td>')
+        outputfile.write('<td colspan="2"></td>')
 
-    sys.stdout.write('</tr>\n')
+    outputfile.write('</tr>\n')
 
     if s1!="":
         line1 += 1
@@ -275,62 +296,129 @@ def empty_buffer():
     buffer = []
 
 
+def parse_input():
+    global buffer, add_cpt, del_cpt
+    global line1, line2
+    global hunk_off1, hunk_size1, hunk_off2, hunk_size2
 
-sys.stdout.write(html_hdr)
-
-while True:
-    l=sys.stdin.readline()
-    if l=="":
-        break
-    
-    m=re.match('^--- ([^\s]*)', l)
-    if m:
-        empty_buffer()
-        file1=m.groups()[0]
-        l=sys.stdin.readline()
-        m=re.match('^\+\+\+ ([^\s]*)', l)
-        if m:
-            file2=m.groups()[0]
-        add_filename(file1, file2)
-        hunk_off1, hunk_size1, hunk_off2, hunk_size2 = 0,0,0,0
-        continue
-
-    m=re.match("@@ -(\d+),?(\d*) \+(\d+),?(\d*)", l)
-    if m:
-        empty_buffer()
-        hunk_data = map(lambda x:x=="" and 1 or int(x), m.groups())
-        hunk_off1, hunk_size1, hunk_off2, hunk_size2 = hunk_data
-        line1, line2 = hunk_off1, hunk_off2
-        add_hunk()
-        continue
+    if not exclude_headers:
+        outputfile.write(html_hdr)
+    outputfile.write(table_hdr)
         
-    if hunk_size1 == 0 and hunk_size2 == 0:
+    while True:
+        l=inputfile.readline()
+        if l=="":
+            break
+
+        m=re.match('^--- ([^\s]*)', l)
+        if m:
+            empty_buffer()
+            file1=m.groups()[0]
+            l=inputfile.readline()
+            m=re.match('^\+\+\+ ([^\s]*)', l)
+            if m:
+                file2=m.groups()[0]
+            add_filename(file1, file2)
+            hunk_off1, hunk_size1, hunk_off2, hunk_size2 = 0,0,0,0
+            continue
+
+        m=re.match("@@ -(\d+),?(\d*) \+(\d+),?(\d*)", l)
+        if m:
+            empty_buffer()
+            hunk_data = map(lambda x:x=="" and 1 or int(x), m.groups())
+            hunk_off1, hunk_size1, hunk_off2, hunk_size2 = hunk_data
+            line1, line2 = hunk_off1, hunk_off2
+            add_hunk()
+            continue
+
+        if hunk_size1 == 0 and hunk_size2 == 0:
+            empty_buffer()
+            add_comment(l)
+            continue
+
+        if re.match("^\+", l):
+            add_cpt += 1
+            hunk_size2 -= 1
+            buffer.append((None, l[1:]))
+            continue
+
+        if re.match("^\-", l):
+            del_cpt += 1
+            hunk_size1 -= 1
+            buffer.append((l[1:], None))
+            continue
+
+        if re.match("^\ ", l) and hunk_size1 and hunk_size2:
+            empty_buffer()
+            hunk_size1 -= 1
+            hunk_size2 -= 1
+            buffer.append((l[1:], l[1:]))
+            continue
+
         empty_buffer()
         add_comment(l)
-        continue
-
-    if re.match("^\+", l):
-        add_cpt += 1
-        hunk_size2 -= 1
-        buffer.append((None, l[1:]))
-        continue
-
-    if re.match("^\-", l):
-        del_cpt += 1
-        hunk_size1 -= 1
-        buffer.append((l[1:], None))
-        continue
-
-    if re.match("^\ ", l) and hunk_size1 and hunk_size2:
-        empty_buffer()
-        hunk_size1 -= 1
-        hunk_size2 -= 1
-        buffer.append((l[1:], l[1:]))
-        continue
 
     empty_buffer()
-    add_comment(l)
+    outputfile.write(table_footer)
+    if not exclude_headers:
+        outputfile.write(html_footer)
 
 
-empty_buffer()
-sys.stdout.write(html_footer)
+def usage():
+    print '''
+diff2html.py [-i file] [-o file] [-x]
+diff2html.py -h
+
+Transform a unified diff from stdin to a colored side-by-side HTML
+page on stdout.
+
+   -i file     set input file, else use stdin
+   -o file     set output file, else use stdout
+   -x          exclude html header and footer
+   -t tabsize  set tab size (default 8)
+   -l linesize set maximum line size is there is no word break (default 20)
+   -r          show \\r characters
+   -k          show hunk infos
+   -h          show help and exit
+'''
+
+def main():
+    global linesize, tabsize
+    global inputfile, outputfile
+    global exclude_headers, show_CR, show_hunk_infos
+
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], "hi:o:xt:l:rk",
+                                   ["help",  "input=", "output=",
+                                    "exclude-html-headers", "tabsize=",
+                                    "linesize=", "show-cr", "show-hunk-infos"])
+    except getopt.GetoptError, err:
+        print str(err) # will print something like "option -a not recognized"
+        usage()
+        sys.exit(2)
+    output = None
+    verbose = False
+    for o, a in opts:
+        if o in ("-h", "--help"):
+            usage()
+            sys.exit()
+        elif o in ("-i", "--input"):
+            inputfile = open(a, "r")
+        elif o in ("-o", "--output"):
+            outputfile = open(a, "w")
+        elif o in ("-x", "--exclude-html-headers"):
+            exclude_headers = True
+        elif o in ("-t", "--tabsize"):
+            tabsize = int(a)
+        elif o in ("-l", "--linesize"):
+            linesize = int(a)
+        elif o in ("-r", "--show-cr"):
+            show_CR = True
+        elif o in ("-k", "--show-hunk-infos"):
+            show_hunk_infos = True
+        else:
+            assert False, "unhandled option"
+    parse_input()
+
+if __name__ == "__main__":
+    main()
