@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#! /usr/bin/python
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,35 +22,35 @@
 #
 # Inspired by diff2html.rb from Dave Burt <dave (at) burt.id.au>
 # (mainly for html theme)
+#
+# Changed by Alan De Smet <adesmet@cs.wisc.edu> 2009-01-25
+# - Remove headers and footers that are undesirable for for CVSTrac
+#   integration.
+# - Change style sheet to own preferences
+# - Adjust LINESIZE code to reset counter and allow breaks whenever 
+#   WORDBREAK characters are encountered.
+# - Don't display offset info (it's redundant with the line numbers)
+#   instead show vertical ellipsis
+# - If part of a "change" is actually blank, it's an addition or
+#   deletion, not a "change" where the entire line changed.
+# - Don't display "\" for end of line; unnecessary noise.
+
+# TODO:
+# - The sane function currently mashes non-ASCII characters to "."
+#   Instead be clever and convert to something like "xF0" 
+#   (the hex value), and mark with a <span>.  Even more clever:
+#   Detect if the character is "printable" for whatever definition,
+#   and display those directly.
 
 
 import sys, re, htmlentitydefs
 
-html_hdr="""<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-            <html><head>
-		<meta name="generator" content="diff2html.rb" />
-		<title>HTML Diff</title>
-		<style>
-			table { border:0px; border-collapse:collapse; width: 100%; font-size:0.75em; font-family: Lucida Console, monospace }
-			td.line { color:#8080a0 }
-			th { background: black; color: white }
-			tr.unmodified td { background: #D0D0E0 }
-			tr.hunk td { background: #A0A0A0 }
-			tr.added td { background: #CCFFCC }
-			tr.deleted td { background: #FFCCCC }
-			tr.changed td { background: #FFFFA0 }
-			span.changed2 { background: #E0C880 }
-			span.ponct { color: #B08080 }
-			tr.misc td {}
-			tr.separator td {}
-		</style>
-		</head>
-		<body>
-		<table>
+html_hdr="""
+		<table class="diff">
 """
 
 html_footer="""
-</table></body></html>
+</table>
 """
 
 DIFFON="\x01"
@@ -64,7 +64,10 @@ hunk_off1, hunk_size1, hunk_off2, hunk_size2 = 0,0,0,0
 # minimum line size, we add a zero-sized breakable space every
 # LINESIZE characters
 LINESIZE=20
-TAB=8
+TAB=4
+
+# Characters we're willing to word wrap on
+WORDBREAK=" \t;.,/):"
 
 def sane(x):
     r=""
@@ -147,7 +150,7 @@ def convert(s, linesize=0, ponct=0):
     for c in s:
         # used by diffs
         if c==DIFFON:
-            t += '<spanclass="changed2">'
+            t += '<span class="diffchanged2">'
         elif c==DIFFOFF:
             t += "</span>"
 
@@ -161,26 +164,28 @@ def convert(s, linesize=0, ponct=0):
             n = TAB-(i%TAB)
             if n==0:
                 n=TAB
-            t += ('<spanclass="ponct">&raquo;</span>'+'&nbsp;'*(n-1))
-            i += n
+            t += ('<span class="diffponct">&raquo;</span>'+'&nbsp;'*(n-1))
+        elif c==" " and ponct==1:
+            t += '<span class="diffponct">&middot;</span>'
         elif c=="\n" and ponct==1:
-            t += '<spanclass="ponct">\</span>'
+            1 # Quietly drop it.
+            #t += '<span class="diffponct">\</span>'
         else:
             t += c
             i += 1
+
+        if linesize and (WORDBREAK.count(c)==1):
+            t += '&#8203;'
+            i=0
         if linesize and i>linesize:
             i=0
             t += "&#8203;"
-
-    if ponct==1:
-        t = t.replace(' ', '<spanclass="ponct">&middot;</span>')
-    t = t.replace("spanclass", "span class")
         
     return t
 
 
 def add_comment(s):
-    sys.stdout.write('<tr class="misc"><td colspan="4">%s</td></tr>\n'%convert(s))
+    sys.stdout.write('<tr class="diffmisc"><td colspan="4">%s</td></tr>\n'%convert(s))
 
 def add_filename(f1, f2):
     sys.stdout.write("<tr><th colspan='2'>%s</th>"%convert(f1, linesize=LINESIZE))
@@ -191,8 +196,12 @@ def add_hunk():
     global hunk_size1
     global hunk_off2
     global hunk_size2
-    sys.stdout.write('<tr class="hunk"><td colspan="2">Offset %d, %d lines modified</td>'%(hunk_off1, hunk_size1))
-    sys.stdout.write('<td colspan="2">Offset %d, %d lines modified</td></tr>\n'%(hunk_off2, hunk_size2))
+	# Don't bother displaying, it's redundant with the line numbers.
+    #sys.stdout.write('<tr class="diffhunk"><td colspan="2">Offset %d, %d lines modified</td>'%(hunk_off1, hunk_size1))
+    #sys.stdout.write('<td colspan="2">Offset %d, %d lines modified</td></tr>\n'%(hunk_off2, hunk_size2))
+	# &#8942; - vertical ellipsis
+    sys.stdout.write('<tr class="diffhunk"><td colspan="2">&#8942;</td><td colspan="2">&#8942;</td></tr>');
+
 
 def add_line(s1, s2):
     global line1
@@ -200,9 +209,9 @@ def add_line(s1, s2):
 
     if s1==None and s2==None:
         type="unmodified"
-    elif s1==None:
+    elif s1==None or s1=="":
         type="added"
-    elif s2==None:
+    elif s2==None or s1=="":
         type="deleted"
     elif s1==s2:
         type="unmodified"
@@ -210,10 +219,10 @@ def add_line(s1, s2):
         type="changed"
         s1,s2 = linediff(s1, s2)
 
-    sys.stdout.write('<tr class="%s">'%type)
+    sys.stdout.write('<tr class="diff%s">'%type)
     if s1!=None and s1!="":
-        sys.stdout.write('<td class="line">%d </td>'%line1)
-        sys.stdout.write('<td>')
+        sys.stdout.write('<td class="diffline">%d </td>'%line1)
+        sys.stdout.write('<td class="diffpresent">')
         sys.stdout.write(convert(s1, linesize=LINESIZE, ponct=1))
         sys.stdout.write('</td>')
     else:
@@ -221,8 +230,8 @@ def add_line(s1, s2):
         sys.stdout.write('<td colspan="2"> </td>')
     
     if s2!=None and s2!="":
-        sys.stdout.write('<td class="line">%d </td>'%line2)
-        sys.stdout.write('<td>')
+        sys.stdout.write('<td class="diffline">%d </td>'%line2)
+        sys.stdout.write('<td class="diffpresent">')
         sys.stdout.write(convert(s2, linesize=LINESIZE, ponct=1))
         sys.stdout.write('</td>')
     else:
