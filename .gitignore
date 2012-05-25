@@ -1,0 +1,14 @@
+.*
+*.o
+*.a
+*.s
+*.ko
+*.mod.c
+*~
+\#*
+*.pyc
+CVS
+tags
+cscope.files
+cscope.out
+*.so
