@@ -20,6 +20,7 @@
 #
 # Authors: Olivier MATZ <zer0@droids-corp.org>
 #          Alan De Smet <adesmet@cs.wisc.edu>
+#          Sergey Satskiy <sergey.satskiy@gmail.com>
 #
 # Inspired by diff2html.rb from Dave Burt <dave (at) burt.id.au>
 # (mainly for html theme)
@@ -308,10 +309,12 @@ def parse_input(input_file, output_file,
         if m:
             empty_buffer(output_file)
             file1 = m.groups()[0]
-            l = input_file.readline()
-            m = re.match('^\+\+\+ ([^\s]*)', l)
-            if m:
-                file2 = m.groups()[0]
+            while True:
+                l = input_file.readline()
+                m = re.match('^\+\+\+ ([^\s]*)', l)
+                if m:
+                    file2 = m.groups()[0]
+                    break
             add_filename(file1, file2, output_file)
             hunk_off1, hunk_size1, hunk_off2, hunk_size2 = 0, 0, 0, 0
             continue
