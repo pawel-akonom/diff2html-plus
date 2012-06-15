@@ -45,7 +45,7 @@ show_CR = False
 show_hunk_infos = False
 
 
-html_hdr="""<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+html_hdr = """<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
             <html><head>
 		<meta name="generator" content="diff2html.rb" />
 		<title>HTML Diff</title>
@@ -67,56 +67,56 @@ html_hdr="""<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
 		<body>
 """
 
-html_footer="""
+html_footer = """
 </body></html>
 """
 
-table_hdr="""
+table_hdr = """
 		<table class="diff">
 """
 
-table_footer="""
+table_footer = """
 </table>
 """
 
-DIFFON="\x01"
-DIFFOFF="\x02"
+DIFFON = "\x01"
+DIFFOFF = "\x02"
 
-buf=[]
-add_cpt, del_cpt = 0,0
-line1, line2 = 0,0
-hunk_off1, hunk_size1, hunk_off2, hunk_size2 = 0,0,0,0
+buf = []
+add_cpt, del_cpt = 0, 0
+line1, line2 = 0, 0
+hunk_off1, hunk_size1, hunk_off2, hunk_size2 = 0, 0, 0, 0
 
 
 # Characters we're willing to word wrap on
-WORDBREAK=" \t;.,/):"
+WORDBREAK = " \t;.,/):"
 
 def sane(x):
-    r=""
+    r = ""
     for i in x:
         j = ord(i)
         if i not in ['\t', '\n'] and ((j < 32) or (j >= 127)):
-            r=r+"."
+            r = r + "."
         else:
-            r=r+i
+            r = r + i
     return r
 
 def linediff(s, t):
     if len(s):
-        s=str(reduce(lambda x,y:x+y, [ sane(c) for c in s ]))
+        s = str(reduce(lambda x, y:x+y, [ sane(c) for c in s ]))
     if len(t):
-        t=str(reduce(lambda x,y:x+y, [ sane(c) for c in t ]))
-    
-    m,n = len(s), len(t)
-    d=[[(0,0) for i in range(n+1)] for i in range(m+1)]
-    x=[[(0,0) for i in range(n+1)] for i in range(m+1)]
+        t = str(reduce(lambda x, y:x+y, [ sane(c) for c in t ]))
 
-    
-    d[0][0] = (0, (0,0))
+    m, n = len(s), len(t)
+    d = [[(0, 0) for i in range(n+1)] for i in range(m+1)]
+    x = [[(0, 0) for i in range(n+1)] for i in range(m+1)]
+
+
+    d[0][0] = (0, (0, 0))
     for i in range(m+1)[1:]:
-        d[i][0] = (i,(i-1,0))
+        d[i][0] = (i,(i-1, 0))
     for j in range(n+1)[1:]:
-        d[0][j] = (j,(0,j-1))
+        d[0][j] = (j,(0, j-1))
 
     for i in range(m+1)[1:]:
         for j in range(n+1)[1:]:
@@ -124,34 +124,34 @@ def linediff(s, t):
                 cost = 0
             else:
                 cost = 1
-            d[i][j] = min((d[i-1][j][0] + 1, (i-1,j)),
-                          (d[i][j-1][0] + 1, (i,j-1)),
-                          (d[i-1][j-1][0] + cost, (i-1,j-1)))
-            
-    l=[]
-    coord = (m,n)
-    while coord != (0,0):
+            d[i][j] = min((d[i-1][j][0] + 1, (i-1, j)),
+                          (d[i][j-1][0] + 1, (i, j-1)),
+                          (d[i-1][j-1][0] + cost, (i-1, j-1)))
+
+    l = []
+    coord = (m, n)
+    while coord != (0, 0):
         l.insert(0, coord)
-        x,y = coord
+        x, y = coord
         coord = d[x][y][1]
 
     l1 = []
     l2 = []
 
     for coord in l:
-        cx,cy = coord
+        cx, cy = coord
         child_val = d[cx][cy][0]
-        
+
         father_coord = d[cx][cy][1]
-        fx,fy = father_coord
+        fx, fy = father_coord
         father_val = d[fx][fy][0]
 
         diff = (cx-fx, cy-fy)
 
-        if diff == (0,1):
+        if diff == (0, 1):
             l1.append("")
             l2.append(DIFFON + t[fy] + DIFFOFF)
-        elif diff == (1,0):
+        elif diff == (1, 0):
             l1.append(DIFFON + s[fx] + DIFFOFF)
             l2.append("")
         elif child_val-father_val == 1:
@@ -161,48 +161,48 @@ def linediff(s, t):
             l1.append(s[fx])
             l2.append(t[fy])
 
-    r1,r2 = (reduce(lambda x,y:x+y, l1), reduce(lambda x,y:x+y, l2))
-    return r1,r2
+    r1, r2 = (reduce(lambda x, y:x+y, l1), reduce(lambda x, y:x+y, l2))
+    return r1, r2
 
 
 def convert(s, linesize=0, ponct=0):
-    i=0
-    t=""
+    i = 0
+    t = ""
     l=[]
     for c in s:
         # used by diffs
-        if c==DIFFON:
+        if c == DIFFON:
             t += '<span class="diffchanged2">'
-        elif c==DIFFOFF:
+        elif c == DIFFOFF:
             t += "</span>"
 
         # special html chars
         elif htmlentitydefs.codepoint2name.has_key(ord(c)):
-            t += "&%s;"%(htmlentitydefs.codepoint2name[ord(c)])
+            t += "&%s;" % (htmlentitydefs.codepoint2name[ord(c)])
             i += 1
 
         # special highlighted chars
-        elif c=="\t" and ponct==1:
+        elif c == "\t" and ponct == 1:
             n = tabsize-(i%tabsize)
-            if n==0:
-                n=tabsize
+            if n == 0:
+                n = tabsize
             t += ('<span class="diffponct">&raquo;</span>'+'&nbsp;'*(n-1))
-        elif c==" " and ponct==1:
+        elif c == " " and ponct == 1:
             t += '<span class="diffponct">&middot;</span>'
-        elif c=="\n" and ponct==1:
+        elif c == "\n" and ponct == 1:
             if show_CR:
                 t += '<span class="diffponct">\</span>'
         else:
             t += c
             i += 1
 
-        if linesize and (WORDBREAK.count(c)==1):
+        if linesize and (WORDBREAK.count(c) == 1):
             t += '&#8203;'
-            i=0
-        if linesize and i>linesize:
-            i=0
+            i = 0
+        if linesize and i > linesize:
+            i = 0
             t += "&#8203;"
-        
+
     return t
 
 
@@ -221,49 +221,49 @@ def add_hunk():
         outputfile.write('<td colspan="2">Offset %d, %d lines modified</td></tr>\n'%(hunk_off2, hunk_size2))
     else:
         # &#8942; - vertical ellipsis
-        outputfile.write('<tr class="diffhunk"><td colspan="2">&#8942;</td><td colspan="2">&#8942;</td></tr>');
+        outputfile.write('<tr class="diffhunk"><td colspan="2">&#8942;</td><td colspan="2">&#8942;</td></tr>')
 
 
 def add_line(s1, s2):
     global line1
     global line2
 
-    if s1==None and s2==None:
-        type_name="unmodified"
-    elif s1==None or s1=="":
-        type_name="added"
-    elif s2==None or s1=="":
-        type_name="deleted"
-    elif s1==s2:
-        type_name="unmodified"
+    if s1 == None and s2 == None:
+        type_name = "unmodified"
+    elif s1 == None or s1 == "":
+        type_name = "added"
+    elif s2 == None or s1 == "":
+        type_name = "deleted"
+    elif s1 == s2:
+        type_name = "unmodified"
     else:
-        type_name="changed"
-        s1,s2 = linediff(s1, s2)
+        type_name = "changed"
+        s1, s2 = linediff(s1, s2)
 
-    outputfile.write('<tr class="diff%s">'%type_name)
-    if s1!=None and s1!="":
-        outputfile.write('<td class="diffline">%d </td>'%line1)
+    outputfile.write('<tr class="diff%s">' % type_name)
+    if s1 != None and s1 != "":
+        outputfile.write('<td class="diffline">%d </td>' % line1)
         outputfile.write('<td class="diffpresent">')
         outputfile.write(convert(s1, linesize=linesize, ponct=1))
         outputfile.write('</td>')
     else:
-        s1=""
+        s1 = ""
         outputfile.write('<td colspan="2"> </td>')
-    
-    if s2!=None and s2!="":
+
+    if s2 != None and s2 != "":
         outputfile.write('<td class="diffline">%d </td>'%line2)
         outputfile.write('<td class="diffpresent">')
         outputfile.write(convert(s2, linesize=linesize, ponct=1))
         outputfile.write('</td>')
     else:
-        s2=""
+        s2 = ""
         outputfile.write('<td colspan="2"></td>')
 
     outputfile.write('</tr>\n')
 
-    if s1!="":
+    if s1 != "":
         line1 += 1
-    if s2!="":
+    if s2 != "":
         line2 += 1
 
 
@@ -286,13 +286,13 @@ def empty_buffer():
         max_len = (len(l0) > len(l1)) and len(l0) or len(l1)
         for i in range(max_len):
             s0, s1 = "", ""
-            if i<len(l0):
+            if i < len(l0):
                 s0 = l0[i]
-            if i<len(l1):
+            if i < len(l1):
                 s1 = l1[i]
             add_line(s0, s1)
-        
-    add_cpt, del_cpt = 0,0
+
+    add_cpt, del_cpt = 0, 0
     buf = []
 
 
@@ -304,25 +304,25 @@ def parse_input():
     if not exclude_headers:
         outputfile.write(html_hdr)
     outputfile.write(table_hdr)
-        
+
     while True:
-        l=inputfile.readline()
-        if l=="":
+        l = inputfile.readline()
+        if l == "":
             break
 
-        m=re.match('^--- ([^\s]*)', l)
+        m = re.match('^--- ([^\s]*)', l)
         if m:
             empty_buffer()
-            file1=m.groups()[0]
-            l=inputfile.readline()
-            m=re.match('^\+\+\+ ([^\s]*)', l)
+            file1 = m.groups()[0]
+            l = inputfile.readline()
+            m = re.match('^\+\+\+ ([^\s]*)', l)
             if m:
-                file2=m.groups()[0]
+                file2 = m.groups()[0]
             add_filename(file1, file2)
-            hunk_off1, hunk_size1, hunk_off2, hunk_size2 = 0,0,0,0
+            hunk_off1, hunk_size1, hunk_off2, hunk_size2 = 0, 0, 0, 0
             continue
 
-        m=re.match("@@ -(\d+),?(\d*) \+(\d+),?(\d*)", l)
+        m = re.match("@@ -(\d+),?(\d*) \+(\d+),?(\d*)", l)
         if m:
             empty_buffer()
             hunk_data = map(lambda x:x=="" and 1 or int(x), m.groups())
