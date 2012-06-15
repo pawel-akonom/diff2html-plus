@@ -82,7 +82,7 @@ table_footer="""
 DIFFON="\x01"
 DIFFOFF="\x02"
 
-buffer=[]
+buf=[]
 add_cpt, del_cpt = 0,0
 line1, line2 = 0,0
 hunk_off1, hunk_size1, hunk_off2, hunk_size2 = 0,0,0,0
@@ -268,17 +268,17 @@ def add_line(s1, s2):
 
 
 def empty_buffer():
-    global buffer
+    global buf
     global add_cpt
     global del_cpt
 
     if del_cpt == 0 or add_cpt == 0:
-        for l in buffer:
+        for l in buf:
             add_line(l[0], l[1])
 
     elif del_cpt != 0 and add_cpt != 0:
         l0, l1 = [], []
-        for l in buffer:
+        for l in buf:
             if l[0] != None:
                 l0.append(l[0])
             if l[1] != None:
@@ -293,11 +293,11 @@ def empty_buffer():
             add_line(s0, s1)
         
     add_cpt, del_cpt = 0,0
-    buffer = []
+    buf = []
 
 
 def parse_input():
-    global buffer, add_cpt, del_cpt
+    global buf, add_cpt, del_cpt
     global line1, line2
     global hunk_off1, hunk_size1, hunk_off2, hunk_size2
 
@@ -339,20 +339,20 @@ def parse_input():
         if re.match("^\+", l):
             add_cpt += 1
             hunk_size2 -= 1
-            buffer.append((None, l[1:]))
+            buf.append((None, l[1:]))
             continue
 
         if re.match("^\-", l):
             del_cpt += 1
             hunk_size1 -= 1
-            buffer.append((l[1:], None))
+            buf.append((l[1:], None))
             continue
 
         if re.match("^\ ", l) and hunk_size1 and hunk_size2:
             empty_buffer()
             hunk_size1 -= 1
             hunk_size2 -= 1
-            buffer.append((l[1:], l[1:]))
+            buf.append((l[1:], l[1:]))
             continue
 
         empty_buffer()
