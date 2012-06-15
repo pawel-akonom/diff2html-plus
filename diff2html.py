@@ -164,7 +164,6 @@ def linediff(s, t):
 def convert(s, linesize=0, ponct=0):
     i = 0
     t = ""
-    l=[]
     for c in s:
         # used by diffs
         if c == DIFFON:
