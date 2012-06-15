@@ -38,8 +38,8 @@ import sys, re, htmlentitydefs, getopt
 # LINESIZE characters
 linesize = 20
 tabsize = 8
-inputfile = sys.stdin
-outputfile = sys.stdout
+input_file = sys.stdin
+output_file = sys.stdout
 exclude_headers = False
 show_CR = False
 show_hunk_infos = False
@@ -207,21 +207,21 @@ def convert(s, linesize=0, ponct=0):
 
 
 def add_comment(s):
-    outputfile.write('<tr class="diffmisc"><td colspan="4">%s</td></tr>\n'%convert(s))
+    output_file.write('<tr class="diffmisc"><td colspan="4">%s</td></tr>\n'%convert(s))
 
 def add_filename(f1, f2):
-    outputfile.write("<tr><th colspan='2'>%s</th>"%convert(f1, linesize=linesize))
-    outputfile.write("<th colspan='2'>%s</th></tr>\n"%convert(f2, linesize=linesize))
+    output_file.write("<tr><th colspan='2'>%s</th>"%convert(f1, linesize=linesize))
+    output_file.write("<th colspan='2'>%s</th></tr>\n"%convert(f2, linesize=linesize))
 
 def add_hunk():
     global hunk_off1, hunk_size1, hunk_off2, hunk_size2
     global show_hunk_infos
     if show_hunk_infos:
-        outputfile.write('<tr class="diffhunk"><td colspan="2">Offset %d, %d lines modified</td>'%(hunk_off1, hunk_size1))
-        outputfile.write('<td colspan="2">Offset %d, %d lines modified</td></tr>\n'%(hunk_off2, hunk_size2))
+        output_file.write('<tr class="diffhunk"><td colspan="2">Offset %d, %d lines modified</td>'%(hunk_off1, hunk_size1))
+        output_file.write('<td colspan="2">Offset %d, %d lines modified</td></tr>\n'%(hunk_off2, hunk_size2))
     else:
         # &#8942; - vertical ellipsis
-        outputfile.write('<tr class="diffhunk"><td colspan="2">&#8942;</td><td colspan="2">&#8942;</td></tr>')
+        output_file.write('<tr class="diffhunk"><td colspan="2">&#8942;</td><td colspan="2">&#8942;</td></tr>')
 
 
 def add_line(s1, s2):
@@ -240,26 +240,26 @@ def add_line(s1, s2):
         type_name = "changed"
         s1, s2 = linediff(s1, s2)
 
-    outputfile.write('<tr class="diff%s">' % type_name)
+    output_file.write('<tr class="diff%s">' % type_name)
     if s1 != None and s1 != "":
-        outputfile.write('<td class="diffline">%d </td>' % line1)
-        outputfile.write('<td class="diffpresent">')
-        outputfile.write(convert(s1, linesize=linesize, ponct=1))
-        outputfile.write('</td>')
+        output_file.write('<td class="diffline">%d </td>' % line1)
+        output_file.write('<td class="diffpresent">')
+        output_file.write(convert(s1, linesize=linesize, ponct=1))
+        output_file.write('</td>')
     else:
         s1 = ""
-        outputfile.write('<td colspan="2"> </td>')
+        output_file.write('<td colspan="2"> </td>')
 
     if s2 != None and s2 != "":
-        outputfile.write('<td class="diffline">%d </td>'%line2)
-        outputfile.write('<td class="diffpresent">')
-        outputfile.write(convert(s2, linesize=linesize, ponct=1))
-        outputfile.write('</td>')
+        output_file.write('<td class="diffline">%d </td>'%line2)
+        output_file.write('<td class="diffpresent">')
+        output_file.write(convert(s2, linesize=linesize, ponct=1))
+        output_file.write('</td>')
     else:
         s2 = ""
-        outputfile.write('<td colspan="2"></td>')
+        output_file.write('<td colspan="2"></td>')
 
-    outputfile.write('</tr>\n')
+    output_file.write('</tr>\n')
 
     if s1 != "":
         line1 += 1
@@ -302,11 +302,11 @@ def parse_input():
     global hunk_off1, hunk_size1, hunk_off2, hunk_size2
 
     if not exclude_headers:
-        outputfile.write(html_hdr)
-    outputfile.write(table_hdr)
+        output_file.write(html_hdr)
+    output_file.write(table_hdr)
 
     while True:
-        l = inputfile.readline()
+        l = input_file.readline()
         if l == "":
             break
 
@@ -314,7 +314,7 @@ def parse_input():
         if m:
             empty_buffer()
             file1 = m.groups()[0]
-            l = inputfile.readline()
+            l = input_file.readline()
             m = re.match('^\+\+\+ ([^\s]*)', l)
             if m:
                 file2 = m.groups()[0]
@@ -359,9 +359,9 @@ def parse_input():
         add_comment(l)
 
     empty_buffer()
-    outputfile.write(table_footer)
+    output_file.write(table_footer)
     if not exclude_headers:
-        outputfile.write(html_footer)
+        output_file.write(html_footer)
 
 
 def usage():
@@ -384,7 +384,7 @@ page on stdout.
 
 def main():
     global linesize, tabsize
-    global inputfile, outputfile
+    global input_file, output_file
     global exclude_headers, show_CR, show_hunk_infos
 
     try:
@@ -403,9 +403,9 @@ def main():
             usage()
             sys.exit()
         elif o in ("-i", "--input"):
-            inputfile = open(a, "r")
+            input_file = open(a, "r")
         elif o in ("-o", "--output"):
-            outputfile = open(a, "w")
+            output_file = open(a, "w")
         elif o in ("-x", "--exclude-html-headers"):
             exclude_headers = True
         elif o in ("-t", "--tabsize"):
