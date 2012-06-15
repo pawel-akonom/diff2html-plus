@@ -395,7 +395,6 @@ def main():
         print str(err) # will print something like "option -a not recognized"
         usage()
         sys.exit(2)
-    output = None
     verbose = False
     for o, a in opts:
         if o in ("-h", "--help"):
