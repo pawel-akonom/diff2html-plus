@@ -38,11 +38,7 @@ import sys, re, htmlentitydefs, getopt
 # LINESIZE characters
 linesize = 20
 tabsize = 8
-input_file = sys.stdin
-output_file = sys.stdout
-exclude_headers = False
 show_CR = False
-show_hunk_infos = False
 
 
 html_hdr = """<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
@@ -206,16 +202,14 @@ def convert(s, linesize=0, ponct=0):
     return t
 
 
-def add_comment(s):
+def add_comment(s, output_file):
     output_file.write('<tr class="diffmisc"><td colspan="4">%s</td></tr>\n'%convert(s))
 
-def add_filename(f1, f2):
+def add_filename(f1, f2, output_file):
     output_file.write("<tr><th colspan='2'>%s</th>"%convert(f1, linesize=linesize))
     output_file.write("<th colspan='2'>%s</th></tr>\n"%convert(f2, linesize=linesize))
 
-def add_hunk():
-    global hunk_off1, hunk_size1, hunk_off2, hunk_size2
-    global show_hunk_infos
+def add_hunk(output_file, show_hunk_infos):
     if show_hunk_infos:
         output_file.write('<tr class="diffhunk"><td colspan="2">Offset %d, %d lines modified</td>'%(hunk_off1, hunk_size1))
         output_file.write('<td colspan="2">Offset %d, %d lines modified</td></tr>\n'%(hunk_off2, hunk_size2))
@@ -224,7 +218,7 @@ def add_hunk():
         output_file.write('<tr class="diffhunk"><td colspan="2">&#8942;</td><td colspan="2">&#8942;</td></tr>')
 
 
-def add_line(s1, s2):
+def add_line(s1, s2, output_file):
     global line1
     global line2
 
@@ -267,14 +261,14 @@ def add_line(s1, s2):
         line2 += 1
 
 
-def empty_buffer():
+def empty_buffer(output_file):
     global buf
     global add_cpt
     global del_cpt
 
     if del_cpt == 0 or add_cpt == 0:
         for l in buf:
-            add_line(l[0], l[1])
+            add_line(l[0], l[1], output_file)
 
     elif del_cpt != 0 and add_cpt != 0:
         l0, l1 = [], []
@@ -290,14 +284,15 @@ def empty_buffer():
                 s0 = l0[i]
             if i < len(l1):
                 s1 = l1[i]
-            add_line(s0, s1)
+            add_line(s0, s1, output_file)
 
     add_cpt, del_cpt = 0, 0
     buf = []
 
 
-def parse_input():
-    global buf, add_cpt, del_cpt
+def parse_input(input_file, output_file,
+                exclude_headers, show_hunk_infos):
+    global add_cpt, del_cpt
     global line1, line2
     global hunk_off1, hunk_size1, hunk_off2, hunk_size2
 
@@ -312,28 +307,28 @@ def parse_input():
 
         m = re.match('^--- ([^\s]*)', l)
         if m:
-            empty_buffer()
+            empty_buffer(output_file)
             file1 = m.groups()[0]
             l = input_file.readline()
             m = re.match('^\+\+\+ ([^\s]*)', l)
             if m:
                 file2 = m.groups()[0]
-            add_filename(file1, file2)
+            add_filename(file1, file2, output_file)
             hunk_off1, hunk_size1, hunk_off2, hunk_size2 = 0, 0, 0, 0
             continue
 
         m = re.match("@@ -(\d+),?(\d*) \+(\d+),?(\d*)", l)
         if m:
-            empty_buffer()
+            empty_buffer(output_file)
             hunk_data = map(lambda x:x=="" and 1 or int(x), m.groups())
             hunk_off1, hunk_size1, hunk_off2, hunk_size2 = hunk_data
             line1, line2 = hunk_off1, hunk_off2
-            add_hunk()
+            add_hunk(output_file, show_hunk_infos)
             continue
 
         if hunk_size1 == 0 and hunk_size2 == 0:
-            empty_buffer()
-            add_comment(l)
+            empty_buffer(output_file)
+            add_comment(l, output_file)
             continue
 
         if re.match("^\+", l):
@@ -349,16 +344,16 @@ def parse_input():
             continue
 
         if re.match("^\ ", l) and hunk_size1 and hunk_size2:
-            empty_buffer()
+            empty_buffer(output_file)
             hunk_size1 -= 1
             hunk_size2 -= 1
             buf.append((l[1:], l[1:]))
             continue
 
-        empty_buffer()
-        add_comment(l)
+        empty_buffer(output_file)
+        add_comment(l, output_file)
 
-    empty_buffer()
+    empty_buffer(output_file)
     output_file.write(table_footer)
     if not exclude_headers:
         output_file.write(html_footer)
@@ -384,8 +379,13 @@ page on stdout.
 
 def main():
     global linesize, tabsize
-    global input_file, output_file
-    global exclude_headers, show_CR, show_hunk_infos
+    global show_CR
+
+    input_file = sys.stdin
+    output_file = sys.stdout
+
+    exclude_headers = False
+    show_hunk_infos = False
 
     try:
         opts, args = getopt.getopt(sys.argv[1:], "hi:o:xt:l:rk",
@@ -418,7 +418,9 @@ def main():
             show_hunk_infos = True
         else:
             assert False, "unhandled option"
-    parse_input()
+    parse_input(input_file, output_file,
+                exclude_headers, show_hunk_infos)
+
 
 if __name__ == "__main__":
     main()
