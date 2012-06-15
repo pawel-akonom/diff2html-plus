@@ -229,18 +229,18 @@ def add_line(s1, s2):
     global line2
 
     if s1==None and s2==None:
-        type="unmodified"
+        type_name="unmodified"
     elif s1==None or s1=="":
-        type="added"
+        type_name="added"
     elif s2==None or s1=="":
-        type="deleted"
+        type_name="deleted"
     elif s1==s2:
-        type="unmodified"
+        type_name="unmodified"
     else:
-        type="changed"
+        type_name="changed"
         s1,s2 = linediff(s1, s2)
 
-    outputfile.write('<tr class="diff%s">'%type)
+    outputfile.write('<tr class="diff%s">'%type_name)
     if s1!=None and s1!="":
         outputfile.write('<td class="diffline">%d </td>'%line1)
         outputfile.write('<td class="diffpresent">')
