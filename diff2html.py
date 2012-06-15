@@ -283,8 +283,8 @@ def empty_buffer():
                 l0.append(l[0])
             if l[1] != None:
                 l1.append(l[1])
-        max = (len(l0) > len(l1)) and len(l0) or len(l1)
-        for i in range(max):
+        max_len = (len(l0) > len(l1)) and len(l0) or len(l1)
+        for i in range(max_len):
             s0, s1 = "", ""
             if i<len(l0):
                 s0 = l0[i]
