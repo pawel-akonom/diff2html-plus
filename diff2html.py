@@ -33,7 +33,7 @@
 #   and display those directly.
 
 
-import sys, re, htmlentitydefs, getopt
+import sys, re, htmlentitydefs, getopt, StringIO
 
 # minimum line size, we add a zero-sized breakable space every
 # LINESIZE characters
@@ -422,6 +422,11 @@ def main():
     parse_input(input_file, output_file,
                 exclude_headers, show_hunk_infos)
 
+def parse_from_memory(txt, exclude_headers, show_hunk_infos):
+    " Parses diff from memory and returns a string with html "
+    stream = StringIO.StringIO(txt)
+    parse_input(stream, stream, exclude_headers, show_hunk_infos)
+    return stream.buf
 
 if __name__ == "__main__":
     main()
