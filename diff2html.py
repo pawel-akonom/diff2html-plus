@@ -424,9 +424,11 @@ def main():
 
 def parse_from_memory(txt, exclude_headers, show_hunk_infos):
     " Parses diff from memory and returns a string with html "
-    stream = StringIO.StringIO(txt)
-    parse_input(stream, stream, exclude_headers, show_hunk_infos)
-    return stream.buf
+    input_stream = StringIO.StringIO(txt)
+    output_stream = StringIO.StringIO()
+    parse_input(input_stream, output_stream, exclude_headers, show_hunk_infos)
+    return output_stream.getvalue()
+
 
 if __name__ == "__main__":
     main()
