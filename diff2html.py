@@ -106,7 +106,7 @@ hunk_off1, hunk_size1, hunk_off2, hunk_size2 = 0, 0, 0, 0
 
 
 # Characters we're willing to word wrap on
-WORDBREAK = " \t;.,/):"
+WORDBREAK = " \t;.,/):-"
 
 def sane(x):
     r = ""
