@@ -35,7 +35,7 @@
 #   and display those directly.
 
 
-import sys, re, htmlentitydefs, getopt, StringIO, codecs
+import sys, re, htmlentitydefs, getopt, StringIO, codecs, datetime
 
 # minimum line size, we add a zero-sized breakable space every
 # LINESIZE characters
@@ -43,32 +43,48 @@ linesize = 20
 tabsize = 8
 show_CR = False
 encoding = "utf-8"
+lang = "en"
 
+desc = "File comparison"
+dtnow = datetime.datetime.now()
+modified_date = "%s+01:00"%dtnow.isoformat()
 
 html_hdr = """<!DOCTYPE html>
-<html><head>
-    <meta charset="{0}" />
-		<meta name="generator" content="diff2html.rb" />
-		<title>HTML Diff</title>
-		<style>
-			table {{ border:0px; border-collapse:collapse; width: 100%; font-size:0.75em; font-family: Lucida Console, monospace }}
-			td.line {{ color:#8080a0 }}
-			th {{ background: black; color: white }}
-			tr.diffunmodified td {{ background: #D0D0E0 }}
-			tr.diffhunk td {{ background: #A0A0A0 }}
-			tr.diffadded td {{ background: #CCFFCC }}
-			tr.diffdeleted td {{ background: #FFCCCC }}
-			tr.diffchanged td {{ background: #FFFFA0 }}
-			span.diffchanged2 {{ background: #E0C880 }}
-			span.diffponct {{ color: #B08080 }}
-			tr.diffmisc td {{}}
-			tr.diffseparator td {{}}
-		</style>
-		</head>
-		<body>
+<html lang="{5}" dir="ltr"
+    xmlns:dc="http://purl.org/dc/terms/">
+<head>
+    <meta charset="{1}" />
+    <meta name="generator" content="diff2html.py (http://git.droids-corp.org/gitweb/?p=diff2html)" />
+    <!--meta name="author" content="Fill in" /-->
+    <title>HTML Diff{0}</title>
+    <link rel="shortcut icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQAgMAAABinRfyAAAACVBMVEXAAAAAgAD///+K/HwIAAAAJUlEQVQI12NYBQQM2IgGBQ4mCIEQW7oyK4phampkGIQAc1G1AQCRxCNbyW92oQAAAABJRU5ErkJggg==" type="image/png" />
+    <meta property="dc:language" content="{5}" />
+    <!--meta property="dc:date" content="{3}" /-->
+    <meta property="dc:modified" content="{4}" />
+    <meta name="description" content="{2}" />
+    <meta property="dc:abstract" content="{2}" />
+    <style>
+        table {{ border:0px; border-collapse:collapse; width: 100%; font-size:0.75em; font-family: Lucida Console, monospace }}
+        td.line {{ color:#8080a0 }}
+        th {{ background: black; color: white }}
+        tr.diffunmodified td {{ background: #D0D0E0 }}
+        tr.diffhunk td {{ background: #A0A0A0 }}
+        tr.diffadded td {{ background: #CCFFCC }}
+        tr.diffdeleted td {{ background: #FFCCCC }}
+        tr.diffchanged td {{ background: #FFFFA0 }}
+        span.diffchanged2 {{ background: #E0C880 }}
+        span.diffponct {{ color: #B08080 }}
+        tr.diffmisc td {{}}
+        tr.diffseparator td {{}}
+    </style>
+</head>
+<body>
 """
 
 html_footer = """
+<footer>
+    <p>Modified at {1}. HTML formatting created by <a href="http://git.droids-corp.org/gitweb/?p=diff2html;a=summary">diff2html</a>.    </p>
+</footer>
 </body></html>
 """
 
@@ -295,14 +311,15 @@ def empty_buffer(output_file):
     buf = []
 
 
-def parse_input(input_file, output_file,
+def parse_input(input_file, output_file, input_file_name, output_file_name,
                 exclude_headers, show_hunk_infos):
     global add_cpt, del_cpt
     global line1, line2
     global hunk_off1, hunk_size1, hunk_off2, hunk_size2
 
     if not exclude_headers:
-        output_file.write(html_hdr.format(encoding).encode(encoding))
+        title_suffix = ' ' + input_file_name
+        output_file.write(html_hdr.format(title_suffix, encoding, desc, "", modified_date, lang).encode(encoding))
     output_file.write(table_hdr.encode(encoding))
 
     while True:
@@ -363,7 +380,7 @@ def parse_input(input_file, output_file,
     empty_buffer(output_file)
     output_file.write(table_footer.encode(encoding))
     if not exclude_headers:
-        output_file.write(html_footer.encode(encoding))
+        output_file.write(html_footer.format("", dtnow.strftime("%d.%m.%Y")).encode(encoding))
 
 
 def usage():
@@ -391,8 +408,8 @@ def main():
     global show_CR
     global encoding
 
-    input_file = sys.stdin
-    output_file = sys.stdout
+    input_file_name = ''
+    output_file_name = ''
 
     exclude_headers = False
     show_hunk_infos = False
@@ -415,8 +432,10 @@ def main():
             encoding = a
         elif o in ("-i", "--input"):
             input_file = codecs.open(a, "r", encoding)
+            input_file_name = a
         elif o in ("-o", "--output"):
             output_file = codecs.open(a, "w")
+            output_file_name = a
         elif o in ("-x", "--exclude-html-headers"):
             exclude_headers = True
         elif o in ("-t", "--tabsize"):
@@ -429,14 +448,23 @@ def main():
             show_hunk_infos = True
         else:
             assert False, "unhandled option"
-    parse_input(input_file, output_file,
+
+    # Use stdin if not input file is set
+    if not ('input_file' in locals()):
+        input_file = codecs.getreader(encoding)(sys.stdin)
+
+    # Use stdout if not output file is set
+    if not ('output_file' in locals()):
+        output_file = codecs.getwriter(encoding)(sys.stdout)
+
+    parse_input(input_file, output_file, input_file_name, output_file_name,
                 exclude_headers, show_hunk_infos)
 
 def parse_from_memory(txt, exclude_headers, show_hunk_infos):
     " Parses diff from memory and returns a string with html "
     input_stream = StringIO.StringIO(txt)
     output_stream = StringIO.StringIO()
-    parse_input(input_stream, output_stream, exclude_headers, show_hunk_infos)
+    parse_input(input_stream, output_stream, '', '', exclude_headers, show_hunk_infos)
     return output_stream.getvalue()
 
 
