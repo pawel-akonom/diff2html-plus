@@ -19,7 +19,7 @@
 # Transform a unified diff from stdin to a colored
 # side-by-side HTML page on stdout.
 #
-# Authors: Olivier MATZ <zer0@droids-corp.org>
+# Authors: Olivier Matz <zer0@droids-corp.org>
 #          Alan De Smet <adesmet@cs.wisc.edu>
 #          Sergey Satskiy <sergey.satskiy@gmail.com>
 #          scito <info at scito.ch>
@@ -29,7 +29,7 @@
 #
 # TODO:
 # - The sane function currently mashes non-ASCII characters to "."
-#   Instead be clever and convert to something like "xF0" 
+#   Instead be clever and convert to something like "xF0"
 #   (the hex value), and mark with a <span>.  Even more clever:
 #   Detect if the character is "printable" for whatever definition,
 #   and display those directly.
