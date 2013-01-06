@@ -1,4 +1,5 @@
 #! /usr/bin/python
+# coding=utf-8
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,6 +22,7 @@
 # Authors: Olivier MATZ <zer0@droids-corp.org>
 #          Alan De Smet <adesmet@cs.wisc.edu>
 #          Sergey Satskiy <sergey.satskiy@gmail.com>
+#          scito <info at scito.ch>
 #
 # Inspired by diff2html.rb from Dave Burt <dave (at) burt.id.au>
 # (mainly for html theme)
@@ -33,32 +35,34 @@
 #   and display those directly.
 
 
-import sys, re, htmlentitydefs, getopt, StringIO
+import sys, re, htmlentitydefs, getopt, StringIO, codecs
 
 # minimum line size, we add a zero-sized breakable space every
 # LINESIZE characters
 linesize = 20
 tabsize = 8
 show_CR = False
+encoding = "utf-8"
 
 
-html_hdr = """<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
-            <html><head>
+html_hdr = """<!DOCTYPE html>
+<html><head>
+    <meta charset="{0}" />
 		<meta name="generator" content="diff2html.rb" />
 		<title>HTML Diff</title>
 		<style>
-			table { border:0px; border-collapse:collapse; width: 100%; font-size:0.75em; font-family: Lucida Console, monospace }
-			td.line { color:#8080a0 }
-			th { background: black; color: white }
-			tr.diffunmodified td { background: #D0D0E0 }
-			tr.diffhunk td { background: #A0A0A0 }
-			tr.diffadded td { background: #CCFFCC }
-			tr.diffdeleted td { background: #FFCCCC }
-			tr.diffchanged td { background: #FFFFA0 }
-			span.diffchanged2 { background: #E0C880 }
-			span.diffponct { color: #B08080 }
-			tr.diffmisc td {}
-			tr.diffseparator td {}
+			table {{ border:0px; border-collapse:collapse; width: 100%; font-size:0.75em; font-family: Lucida Console, monospace }}
+			td.line {{ color:#8080a0 }}
+			th {{ background: black; color: white }}
+			tr.diffunmodified td {{ background: #D0D0E0 }}
+			tr.diffhunk td {{ background: #A0A0A0 }}
+			tr.diffadded td {{ background: #CCFFCC }}
+			tr.diffdeleted td {{ background: #FFCCCC }}
+			tr.diffchanged td {{ background: #FFFFA0 }}
+			span.diffchanged2 {{ background: #E0C880 }}
+			span.diffponct {{ color: #B08080 }}
+			tr.diffmisc td {{}}
+			tr.diffseparator td {{}}
 		</style>
 		</head>
 		<body>
@@ -92,7 +96,7 @@ def sane(x):
     r = ""
     for i in x:
         j = ord(i)
-        if i not in ['\t', '\n'] and ((j < 32) or (j >= 127)):
+        if i not in ['\t', '\n'] and (j < 32):
             r = r + "."
         else:
             r = r + i
@@ -100,9 +104,9 @@ def sane(x):
 
 def linediff(s, t):
     if len(s):
-        s = str(reduce(lambda x, y:x+y, [ sane(c) for c in s ]))
+        s = unicode(reduce(lambda x, y:x+y, [ sane(c) for c in s ]))
     if len(t):
-        t = str(reduce(lambda x, y:x+y, [ sane(c) for c in t ]))
+        t = unicode(reduce(lambda x, y:x+y, [ sane(c) for c in t ]))
 
     m, n = len(s), len(t)
     d = [[(0, 0) for i in range(n+1)] for i in range(m+1)]
@@ -163,17 +167,17 @@ def linediff(s, t):
 
 def convert(s, linesize=0, ponct=0):
     i = 0
-    t = ""
+    t = u""
     for c in s:
         # used by diffs
         if c == DIFFON:
-            t += '<span class="diffchanged2">'
+            t += u'<span class="diffchanged2">'
         elif c == DIFFOFF:
-            t += "</span>"
+            t += u"</span>"
 
         # special html chars
         elif htmlentitydefs.codepoint2name.has_key(ord(c)):
-            t += "&%s;" % (htmlentitydefs.codepoint2name[ord(c)])
+            t += u"&%s;" % (htmlentitydefs.codepoint2name[ord(c)])
             i += 1
 
         # special highlighted chars
@@ -181,32 +185,34 @@ def convert(s, linesize=0, ponct=0):
             n = tabsize-(i%tabsize)
             if n == 0:
                 n = tabsize
-            t += ('<span class="diffponct">&raquo;</span>'+'&nbsp;'*(n-1))
+            t += (u'<span class="diffponct">&raquo;</span>'+'&nbsp;'*(n-1))
         elif c == " " and ponct == 1:
-            t += '<span class="diffponct">&middot;</span>'
+            t += u'<span class="diffponct">&middot;</span>'
         elif c == "\n" and ponct == 1:
             if show_CR:
-                t += '<span class="diffponct">\</span>'
+                t += u'<span class="diffponct">\</span>'
         else:
             t += c
             i += 1
 
         if linesize and (WORDBREAK.count(c) == 1):
-            t += '&#8203;'
+            t += u'&#8203;'
             i = 0
         if linesize and i > linesize:
             i = 0
-            t += "&#8203;"
+            t += u"&#8203;"
 
     return t
 
 
 def add_comment(s, output_file):
-    output_file.write('<tr class="diffmisc"><td colspan="4">%s</td></tr>\n'%convert(s))
+    output_file.write(('<tr class="diffmisc"><td colspan="4">%s</td></tr>\n'%convert(s)).encode(encoding))
+
 
 def add_filename(f1, f2, output_file):
-    output_file.write("<tr><th colspan='2'>%s</th>"%convert(f1, linesize=linesize))
-    output_file.write("<th colspan='2'>%s</th></tr>\n"%convert(f2, linesize=linesize))
+    output_file.write(("<tr><th colspan='2'>%s</th>"%convert(f1, linesize=linesize)).encode(encoding))
+    output_file.write(("<th colspan='2'>%s</th></tr>\n"%convert(f2, linesize=linesize)).encode(encoding))
+
 
 def add_hunk(output_file, show_hunk_infos):
     if show_hunk_infos:
@@ -233,20 +239,20 @@ def add_line(s1, s2, output_file):
         type_name = "changed"
         s1, s2 = linediff(s1, s2)
 
-    output_file.write('<tr class="diff%s">' % type_name)
+    output_file.write(('<tr class="diff%s">' % type_name).encode(encoding))
     if s1 != None and s1 != "":
-        output_file.write('<td class="diffline">%d </td>' % line1)
-        output_file.write('<td class="diffpresent">')
-        output_file.write(convert(s1, linesize=linesize, ponct=1))
+        output_file.write(('<td class="diffline">%d </td>' % line1).encode(encoding))
+        output_file.write('<td class="diffpresent">'.encode(encoding))
+        output_file.write(convert(s1, linesize=linesize, ponct=1).encode(encoding))
         output_file.write('</td>')
     else:
         s1 = ""
         output_file.write('<td colspan="2"> </td>')
 
     if s2 != None and s2 != "":
-        output_file.write('<td class="diffline">%d </td>'%line2)
+        output_file.write(('<td class="diffline">%d </td>'%line2).encode(encoding))
         output_file.write('<td class="diffpresent">')
-        output_file.write(convert(s2, linesize=linesize, ponct=1))
+        output_file.write(convert(s2, linesize=linesize, ponct=1).encode(encoding))
         output_file.write('</td>')
     else:
         s2 = ""
@@ -296,8 +302,8 @@ def parse_input(input_file, output_file,
     global hunk_off1, hunk_size1, hunk_off2, hunk_size2
 
     if not exclude_headers:
-        output_file.write(html_hdr)
-    output_file.write(table_hdr)
+        output_file.write(html_hdr.format(encoding).encode(encoding))
+    output_file.write(table_hdr.encode(encoding))
 
     while True:
         l = input_file.readline()
@@ -355,20 +361,22 @@ def parse_input(input_file, output_file,
         add_comment(l, output_file)
 
     empty_buffer(output_file)
-    output_file.write(table_footer)
+    output_file.write(table_footer.encode(encoding))
     if not exclude_headers:
-        output_file.write(html_footer)
+        output_file.write(html_footer.encode(encoding))
 
 
 def usage():
     print '''
-diff2html.py [-i file] [-o file] [-x]
+diff2html.py [-e encoding] [-i file] [-o file] [-x]
 diff2html.py -h
 
 Transform a unified diff from stdin to a colored side-by-side HTML
 page on stdout.
+stdout may not work with UTF-8, instead use -o option.
 
    -i file     set input file, else use stdin
+   -e encoding set file encoding (default utf-8)
    -o file     set output file, else use stdout
    -x          exclude html header and footer
    -t tabsize  set tab size (default 8)
@@ -381,6 +389,7 @@ page on stdout.
 def main():
     global linesize, tabsize
     global show_CR
+    global encoding
 
     input_file = sys.stdin
     output_file = sys.stdout
@@ -389,12 +398,12 @@ def main():
     show_hunk_infos = False
 
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "hi:o:xt:l:rk",
-                                   ["help",  "input=", "output=",
+        opts, args = getopt.getopt(sys.argv[1:], "he:i:o:xt:l:rk",
+                                   ["help", "encoding=", "input=", "output=",
                                     "exclude-html-headers", "tabsize=",
                                     "linesize=", "show-cr", "show-hunk-infos"])
     except getopt.GetoptError, err:
-        print str(err) # will print something like "option -a not recognized"
+        print unicode(err) # will print something like "option -a not recognized"
         usage()
         sys.exit(2)
     verbose = False
@@ -402,10 +411,12 @@ def main():
         if o in ("-h", "--help"):
             usage()
             sys.exit()
+        elif o in ("-e", "--encoding"):
+            encoding = a
         elif o in ("-i", "--input"):
-            input_file = open(a, "r")
+            input_file = codecs.open(a, "r", encoding)
         elif o in ("-o", "--output"):
-            output_file = open(a, "w")
+            output_file = codecs.open(a, "w")
         elif o in ("-x", "--exclude-html-headers"):
             exclude_headers = True
         elif o in ("-t", "--tabsize"):
