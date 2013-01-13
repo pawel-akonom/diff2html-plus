@@ -34,8 +34,12 @@
 #   Detect if the character is "printable" for whatever definition,
 #   and display those directly.
 
-
 import sys, re, htmlentitydefs, getopt, StringIO, codecs, datetime
+try:
+    from simplediff import diff, string_diff
+except ImportError:
+    sys.stderr.write("info: simplediff module not found, only linediff is available\n")
+    sys.stderr.write("info: it can be downloaded at https://github.com/paulgb/simplediff\n")
 
 # minimum line size, we add a zero-sized breakable space every
 # LINESIZE characters
@@ -44,6 +48,7 @@ tabsize = 8
 show_CR = False
 encoding = "utf-8"
 lang = "en"
+algorithm = 0
 
 desc = "File comparison"
 dtnow = datetime.datetime.now()
@@ -119,6 +124,9 @@ def sane(x):
     return r
 
 def linediff(s, t):
+    '''
+    Original line diff algorithm of diff2html. It's character based.
+    '''
     if len(s):
         s = unicode(reduce(lambda x, y:x+y, [ sane(c) for c in s ]))
     if len(t):
@@ -179,6 +187,62 @@ def linediff(s, t):
 
     r1, r2 = (reduce(lambda x, y:x+y, l1), reduce(lambda x, y:x+y, l2))
     return r1, r2
+
+
+def diff_changed(old, new):
+    '''
+    Returns the differences basend on characters between two strings
+    wrapped with DIFFON and DIFFOFF using `diff`.
+    '''
+    con = {'=': (lambda x: x),
+           '+': (lambda x: DIFFON + x + DIFFOFF),
+           '-': (lambda x: '')}
+    return "".join([(con[a])("".join(b)) for a, b in diff(old, new)])
+
+
+def diff_changed_ts(old, new):
+    '''
+    Returns a tuple for a two sided comparison based on characters, see `diff_changed`.
+    '''
+    return (diff_changed(new, old), diff_changed(old, new))
+
+
+def word_diff(old, new):
+    '''
+    Returns the difference between the old and new strings based on words. Punctuation is not part of the word.
+
+    Params:
+        old the old string
+        new the new string
+
+    Returns:
+        the output of `diff` on the two strings after splitting them
+        on whitespace (a list of change instructions; see the docstring
+        of `diff`)
+    '''
+    separator_pattern = '(\W+)';
+    return diff(re.split(separator_pattern, old, flags=re.UNICODE), re.split(separator_pattern, new, flags=re.UNICODE))
+
+
+def diff_changed_words(old, new):
+    '''
+    Returns the difference between two strings based on words (see `word_diff`)
+    wrapped with DIFFON and DIFFOFF.
+
+    Returns:
+        the output of the diff expressed delimited with DIFFON and DIFFOFF.
+    '''
+    con = {'=': (lambda x: x),
+           '+': (lambda x: DIFFON + x + DIFFOFF),
+           '-': (lambda x: '')}
+    return "".join([(con[a])("".join(b)) for a, b in word_diff(old, new)])
+
+
+def diff_changed_words_ts(old, new):
+    '''
+    Returns a tuple for a two sided comparison based on words, see `diff_changed_words`.
+    '''
+    return (diff_changed_words(new, old), diff_changed_words(old, new))
 
 
 def convert(s, linesize=0, ponct=0):
@@ -243,6 +307,9 @@ def add_line(s1, s2, output_file):
     global line1
     global line2
 
+    orig1 = s1
+    orig2 = s2
+
     if s1 == None and s2 == None:
         type_name = "unmodified"
     elif s1 == None or s1 == "":
@@ -253,7 +320,12 @@ def add_line(s1, s2, output_file):
         type_name = "unmodified"
     else:
         type_name = "changed"
-        s1, s2 = linediff(s1, s2)
+        if algorithm == 1:
+            s1, s2 = diff_changed_words_ts(orig1, orig2)
+        elif algorithm == 2:
+            s1, s2 = diff_changed_ts(orig1, orig2)
+        else: # default
+            s1, s2 = linediff(orig1, orig2)
 
     output_file.write(('<tr class="diff%s">' % type_name).encode(encoding))
     if s1 != None and s1 != "":
@@ -400,6 +472,7 @@ stdout may not work with UTF-8, instead use -o option.
    -l linesize set maximum line size is there is no word break (default 20)
    -r          show \\r characters
    -k          show hunk infos
+   -a algo     line diff algorithm (0: linediff characters, 1: word, 2: simplediff characters) (default 0)
    -h          show help and exit
 '''
 
@@ -407,6 +480,7 @@ def main():
     global linesize, tabsize
     global show_CR
     global encoding
+    global algorithm
 
     input_file_name = ''
     output_file_name = ''
@@ -415,10 +489,10 @@ def main():
     show_hunk_infos = False
 
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "he:i:o:xt:l:rk",
+        opts, args = getopt.getopt(sys.argv[1:], "he:i:o:xt:l:rka:",
                                    ["help", "encoding=", "input=", "output=",
                                     "exclude-html-headers", "tabsize=",
-                                    "linesize=", "show-cr", "show-hunk-infos"])
+                                    "linesize=", "show-cr", "show-hunk-infos", "algorithm="])
     except getopt.GetoptError, err:
         print unicode(err) # will print something like "option -a not recognized"
         usage()
@@ -446,6 +520,8 @@ def main():
             show_CR = True
         elif o in ("-k", "--show-hunk-infos"):
             show_hunk_infos = True
+        elif o in ("-a", "--algorithm"):
+            algorithm = int(a)
         else:
             assert False, "unhandled option"
 
