@@ -106,7 +106,6 @@ def linediff(s, t):
 
     m, n = len(s), len(t)
     d = [[(0, 0) for i in range(n+1)] for i in range(m+1)]
-    x = [[(0, 0) for i in range(n+1)] for i in range(m+1)]
 
 
     d[0][0] = (0, (0, 0))
