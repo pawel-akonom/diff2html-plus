@@ -33,6 +33,8 @@
 #   (the hex value), and mark with a <span>.  Even more clever:
 #   Detect if the character is "printable" for whatever definition,
 #   and display those directly.
+#
+# FORKING project to diff2html-plus
 
 import sys, re, htmlentitydefs, getopt, StringIO, codecs, datetime
 try:
