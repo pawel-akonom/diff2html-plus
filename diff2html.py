@@ -390,7 +390,7 @@ def parse_input(input_file, output_file, input_file_name, output_file_name,
     global add_cpt, del_cpt
     global line1, line2
     global hunk_off1, hunk_size1, hunk_off2, hunk_size2
-
+    line_number=0
     if not exclude_headers:
         title_suffix = ' ' + input_file_name
         output_file.write(html_hdr.format(title_suffix, encoding, desc, "", modified_date, lang).encode(encoding))
@@ -410,14 +410,16 @@ def parse_input(input_file, output_file, input_file_name, output_file_name,
         m = re.match('^--- ([^\s]*)', l)
         if m:
             empty_buffer(output_file)
+            revision1=l[l.index("("):l.index(")")+1]
             file1 = m.groups()[0]
             while True:
                 l = input_file.readline()
                 m = re.match('^\+\+\+ ([^\s]*)', l)
                 if m:
                     file2 = m.groups()[0]
+                    revision2=l[l.index("("):l.index(")")+1]
                     break
-            add_filename(file1, file2, output_file)
+            add_filename(file1+" "+revision1, file2+" "+revision2, output_file)
             hunk_off1, hunk_size1, hunk_off2, hunk_size2 = 0, 0, 0, 0
             continue
 
