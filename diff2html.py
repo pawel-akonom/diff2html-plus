@@ -397,7 +397,13 @@ def parse_input(input_file, output_file, input_file_name, output_file_name,
     output_file.write(table_hdr.encode(encoding))
 
     while True:
-        l = input_file.readline()
+        line_number+=1
+        try:
+            l = input_file.readline()
+        except UnicodeDecodeError, e:
+            print ("Problem with "+encoding+" decoding "+str(input_file_name)+" file in line "+str(line_number))
+            print (e)
+            exit (1)
         if l == "":
             break
 
