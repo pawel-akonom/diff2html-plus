@@ -51,6 +51,7 @@ show_CR = False
 encoding = "utf-8"
 lang = "en"
 algorithm = 0
+diff_file_list = []
 
 desc = "File comparison"
 dtnow = datetime.datetime.now()
@@ -465,9 +466,95 @@ def parse_input(input_file, output_file, input_file_name, output_file_name,
         output_file.write(html_footer.format("", dtnow.strftime("%d.%m.%Y")).encode(encoding))
 
 
+def parse_input_split(input_file, exclude_headers, show_hunk_infos):
+    global add_cpt, del_cpt
+    global line1, line2
+    global diff_file_list
+    global hunk_off1, hunk_size1, hunk_off2, hunk_size2
+    line_number=0
+    while True:
+        line_number+=1
+        try:
+            l = input_file.readline()
+        except UnicodeDecodeError, e:
+            print ("Problem with "+encoding+" decoding "+str(input_file_name)+" file in line "+str(line_number))
+            print (e)
+            exit (1)
+        if l.find("Index:") == 0:
+            output_file_name=l[7:].strip()
+            diff_file_list.append(output_file_name)
+            last_separator_index = output_file_name.rfind('/')
+            if last_separator_index != -1:
+                output_file_name=output_file_name[last_separator_index+1:]
+            output_file = codecs.open(output_file_name+".htm", "w")
+            if not exclude_headers:
+                title_suffix = ' ' + output_file_name
+                output_file.write(html_hdr.format(title_suffix, encoding, desc, "", modified_date, lang).encode(encoding))
+            output_file.write(table_hdr.encode(encoding))
+        if l == "":
+            break
+
+        m = re.match('^--- ([^\s]*)', l)
+        if m:
+            empty_buffer(output_file)
+            revision1=l[l.index("("):l.index(")")+1]
+            file1 = m.groups()[0]
+            while True:
+                l = input_file.readline()
+                m = re.match('^\+\+\+ ([^\s]*)', l)
+                if m:
+                    file2 = m.groups()[0]
+                    revision2=l[l.index("("):l.index(")")+1]
+                    break
+            add_filename(file1+" "+revision1, file2+" "+revision2, output_file)
+            hunk_off1, hunk_size1, hunk_off2, hunk_size2 = 0, 0, 0, 0
+            continue
+
+        m = re.match("@@ -(\d+),?(\d*) \+(\d+),?(\d*)", l)
+        if m:
+            empty_buffer(output_file)
+            hunk_data = map(lambda x:x=="" and 1 or int(x), m.groups())
+            hunk_off1, hunk_size1, hunk_off2, hunk_size2 = hunk_data
+            line1, line2 = hunk_off1, hunk_off2
+            add_hunk(output_file, show_hunk_infos)
+            continue
+
+        if hunk_size1 == 0 and hunk_size2 == 0:
+            empty_buffer(output_file)
+            add_comment(l, output_file)
+            continue
+
+        if re.match("^\+", l):
+            add_cpt += 1
+            hunk_size2 -= 1
+            buf.append((None, l[1:]))
+            continue
+
+        if re.match("^\-", l):
+            del_cpt += 1
+            hunk_size1 -= 1
+            buf.append((l[1:], None))
+            continue
+
+        if re.match("^\ ", l) and hunk_size1 and hunk_size2:
+            empty_buffer(output_file)
+            hunk_size1 -= 1
+            hunk_size2 -= 1
+            buf.append((l[1:], l[1:]))
+            continue
+
+        empty_buffer(output_file)
+        add_comment(l, output_file)
+
+    empty_buffer(output_file)
+    output_file.write(table_footer.encode(encoding))
+    if not exclude_headers:
+        output_file.write(html_footer.format("", dtnow.strftime("%d.%m.%Y")).encode(encoding))
+
+
 def usage():
     print '''
-diff2html.py [-e encoding] [-i file] [-o file] [-x]
+diff2html.py [-e encoding] [-i file] [-o file] [-x] [-s]
 diff2html.py -h
 
 Transform a unified diff from stdin to a colored side-by-side HTML
@@ -483,6 +570,7 @@ stdout may not work with UTF-8, instead use -o option.
    -r          show \\r characters
    -k          show hunk infos
    -a algo     line diff algorithm (0: linediff characters, 1: word, 2: simplediff characters) (default 0)
+   -s          split output to seperate html files (filenames from diff with htm extension), -o filename is ignored
    -h          show help and exit
 '''
 
@@ -491,18 +579,20 @@ def main():
     global show_CR
     global encoding
     global algorithm
+    global diff_file_list
 
     input_file_name = ''
     output_file_name = ''
 
     exclude_headers = False
     show_hunk_infos = False
+    split = False
 
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "he:i:o:xt:l:rka:",
+        opts, args = getopt.getopt(sys.argv[1:], "he:i:o:xt:l:rka:s",
                                    ["help", "encoding=", "input=", "output=",
                                     "exclude-html-headers", "tabsize=",
-                                    "linesize=", "show-cr", "show-hunk-infos", "algorithm="])
+                                    "linesize=", "show-cr", "show-hunk-infos", "algorithm=", "split"])
     except getopt.GetoptError, err:
         print unicode(err) # will print something like "option -a not recognized"
         usage()
@@ -532,6 +622,8 @@ def main():
             show_hunk_infos = True
         elif o in ("-a", "--algorithm"):
             algorithm = int(a)
+        elif o in ("-s", "--split"):
+            split = True
         else:
             assert False, "unhandled option"
 
@@ -539,12 +631,13 @@ def main():
     if not ('input_file' in locals()):
         input_file = codecs.getreader(encoding)(sys.stdin)
 
-    # Use stdout if not output file is set
-    if not ('output_file' in locals()):
-        output_file = codecs.getwriter(encoding)(sys.stdout)
-
-    parse_input(input_file, output_file, input_file_name, output_file_name,
-                exclude_headers, show_hunk_infos)
+    if split:
+        parse_input_split(input_file, exclude_headers, show_hunk_infos)
+    else:
+        # Use stdout if not output file is set
+        if not ('output_file' in locals()):
+            output_file = codecs.getwriter(encoding)(sys.stdout)
+        parse_input(input_file, output_file, input_file_name, output_file_name, exclude_headers, show_hunk_infos)
 
 def parse_from_memory(txt, exclude_headers, show_hunk_infos):
     " Parses diff from memory and returns a string with html "
