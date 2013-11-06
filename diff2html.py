@@ -385,6 +385,31 @@ def empty_buffer(output_file):
     add_cpt, del_cpt = 0, 0
     buf = []
 
+def get_revisions(input_file):
+    revisions=[]
+    line_number=0
+
+    while True:
+        line_number+=1
+        try:
+            l = input_file.readline()
+        except UnicodeDecodeError, e:
+            print ("Problem with "+encoding+" decoding "+str(input_file_name)+" file in line "+str(line_number))
+            print (e)
+            exit (1)
+        if len(revisions) == 2 or l == "":
+            break
+        m=re.match('^[d-]{3}\s+.*\s+\(revision\s+[0-9]+\)', l)
+        if m is not None:
+            revision=re.split('\(revision |\)',l)[1]
+            revisions.append(int(revision))
+        m=re.match('^[d+]{3}\s+.*\s+\(revision\s+[0-9]+\)', l)
+        if m is not None:
+            revision=re.split('\(revision |\)',l)[1]
+            revisions.append(int(revision))
+    input_file.seek(0)
+    return revisions
+
 
 def parse_input(input_file, output_file, input_file_name, output_file_name,
                 exclude_headers, show_hunk_infos):
@@ -488,7 +513,7 @@ def parse_input_split(input_file, exclude_headers, show_hunk_infos):
                 output_file_name=output_file_name[last_separator_index+1:]
             output_file = codecs.open(output_file_name+".htm", "w")
             if not exclude_headers:
-                title_suffix = ' ' + output_file_name
+                title_suffix = ' ' + diff_file_list[-1]
                 output_file.write(html_hdr.format(title_suffix, encoding, desc, "", modified_date, lang).encode(encoding))
             output_file.write(table_hdr.encode(encoding))
         if l == "":
@@ -630,6 +655,8 @@ def main():
     # Use stdin if not input file is set
     if not ('input_file' in locals()):
         input_file = codecs.getreader(encoding)(sys.stdin)
+
+    print get_revisions(input_file)
 
     if split:
         parse_input_split(input_file, exclude_headers, show_hunk_infos)
