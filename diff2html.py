@@ -402,11 +402,11 @@ def get_revisions(input_file):
         m=re.match('^[d-]{3}\s+.*\s+\(revision\s+[0-9]+\)', l)
         if m is not None:
             revision=re.split('\(revision |\)',l)[1]
-            revisions.append(int(revision))
+            revisions.append(revision)
         m=re.match('^[d+]{3}\s+.*\s+\(revision\s+[0-9]+\)', l)
         if m is not None:
             revision=re.split('\(revision |\)',l)[1]
-            revisions.append(int(revision))
+            revisions.append(revision)
     input_file.seek(0)
     return revisions
 
@@ -491,7 +491,7 @@ def parse_input(input_file, output_file, input_file_name, output_file_name,
         output_file.write(html_footer.format("", dtnow.strftime("%d.%m.%Y")).encode(encoding))
 
 
-def parse_input_split(input_file, exclude_headers, show_hunk_infos):
+def parse_input_split(input_file, exclude_headers, show_hunk_infos, revisions):
     global add_cpt, del_cpt
     global line1, line2
     global diff_file_list
@@ -514,6 +514,8 @@ def parse_input_split(input_file, exclude_headers, show_hunk_infos):
             output_file = codecs.open(output_file_name+".htm", "w")
             if not exclude_headers:
                 title_suffix = ' ' + diff_file_list[-1]
+                if len(revisions) == 2:
+                    title_suffix += ' revisions ' + revisions[0] + ':' +  revisions[1] 
                 output_file.write(html_hdr.format(title_suffix, encoding, desc, "", modified_date, lang).encode(encoding))
             output_file.write(table_hdr.encode(encoding))
         if l == "":
@@ -596,6 +598,7 @@ stdout may not work with UTF-8, instead use -o option.
    -k          show hunk infos
    -a algo     line diff algorithm (0: linediff characters, 1: word, 2: simplediff characters) (default 0)
    -s          split output to seperate html files (filenames from diff with htm extension), -o filename is ignored
+   -u url      url to repository from which diff was generated
    -h          show help and exit
 '''
 
@@ -608,6 +611,7 @@ def main():
 
     input_file_name = ''
     output_file_name = ''
+    url=''
 
     exclude_headers = False
     show_hunk_infos = False
@@ -649,6 +653,8 @@ def main():
             algorithm = int(a)
         elif o in ("-s", "--split"):
             split = True
+        elif o in ("-u", "--url"):
+            url = a
         else:
             assert False, "unhandled option"
 
@@ -656,10 +662,10 @@ def main():
     if not ('input_file' in locals()):
         input_file = codecs.getreader(encoding)(sys.stdin)
 
-    print get_revisions(input_file)
+    revisions = get_revisions(input_file)
 
     if split:
-        parse_input_split(input_file, exclude_headers, show_hunk_infos)
+        parse_input_split(input_file, exclude_headers, show_hunk_infos, revisions)
     else:
         # Use stdout if not output file is set
         if not ('output_file' in locals()):
