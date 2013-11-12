@@ -401,26 +401,22 @@ def get_revisions(input_file):
             break
         m=re.match('^[d-]{3}\s+.*\s+\(revision\s+[0-9]+\)', l)
         if m is not None:
-            revision=re.split('\(revision |\)',l)[1]
+            revision=re.split('\(revision |\)',l)[-2]
             revisions.append(revision)
         m=re.match('^[d+]{3}\s+.*\s+\(revision\s+[0-9]+\)', l)
         if m is not None:
-            revision=re.split('\(revision |\)',l)[1]
+            revision=re.split('\(revision |\)',l)[-2]
             revisions.append(revision)
     input_file.seek(0)
     return revisions
 
 
 def parse_input(input_file, output_file, input_file_name, output_file_name,
-                exclude_headers, show_hunk_infos):
+                exclude_headers, show_hunk_infos, revisions):
     global add_cpt, del_cpt
     global line1, line2
     global hunk_off1, hunk_size1, hunk_off2, hunk_size2
     line_number=0
-    if not exclude_headers:
-        title_suffix = ' ' + input_file_name
-        output_file.write(html_hdr.format(title_suffix, encoding, desc, "", modified_date, lang).encode(encoding))
-    output_file.write(table_hdr.encode(encoding))
 
     while True:
         line_number+=1
@@ -433,19 +429,30 @@ def parse_input(input_file, output_file, input_file_name, output_file_name,
         if l == "":
             break
 
+        if l.find("Index: ") == 0:
+            diff_file_name=l[7:].strip()
+            if not exclude_headers:
+                title_suffix = ' ' + diff_file_name
+                if len(revisions) == 2:
+                    title_suffix += ' revisions ' + revisions[0] + ':' +  revisions[1]
+                output_file.write(html_hdr.format(title_suffix, encoding, desc, "", modified_date, lang).encode(encoding))
+            output_file.write(table_hdr.encode(encoding))
+            
+
         m = re.match('^--- ([^\s]*)', l)
         if m:
             empty_buffer(output_file)
-            revision1=l[l.index("("):l.index(")")+1]
             file1 = m.groups()[0]
             while True:
                 l = input_file.readline()
                 m = re.match('^\+\+\+ ([^\s]*)', l)
                 if m:
                     file2 = m.groups()[0]
-                    revision2=l[l.index("("):l.index(")")+1]
                     break
-            add_filename(file1+" "+revision1, file2+" "+revision2, output_file)
+            if len(revisions) == 2:
+                add_filename(file1+" "+revisions[0], file2+" "+revisions[1], output_file)
+            else:
+                add_filename(file1, file2, output_file)
             hunk_off1, hunk_size1, hunk_off2, hunk_size2 = 0, 0, 0, 0
             continue
 
@@ -496,7 +503,9 @@ def parse_input_split(input_file, exclude_headers, show_hunk_infos, revisions):
     global line1, line2
     global diff_file_list
     global hunk_off1, hunk_size1, hunk_off2, hunk_size2
+    output_file = None
     line_number=0
+
     while True:
         line_number+=1
         try:
@@ -505,12 +514,16 @@ def parse_input_split(input_file, exclude_headers, show_hunk_infos, revisions):
             print ("Problem with "+encoding+" decoding "+str(input_file_name)+" file in line "+str(line_number))
             print (e)
             exit (1)
-        if l.find("Index:") == 0:
+
+        if l.find("Index: ") == 0:
             output_file_name=l[7:].strip()
             diff_file_list.append(output_file_name)
             last_separator_index = output_file_name.rfind('/')
             if last_separator_index != -1:
                 output_file_name=output_file_name[last_separator_index+1:]
+            if output_file is not None:
+                empty_buffer(output_file)
+                output_file.write(table_footer.encode(encoding))
             output_file = codecs.open(output_file_name+".htm", "w")
             if not exclude_headers:
                 title_suffix = ' ' + diff_file_list[-1]
@@ -524,16 +537,17 @@ def parse_input_split(input_file, exclude_headers, show_hunk_infos, revisions):
         m = re.match('^--- ([^\s]*)', l)
         if m:
             empty_buffer(output_file)
-            revision1=l[l.index("("):l.index(")")+1]
             file1 = m.groups()[0]
             while True:
                 l = input_file.readline()
                 m = re.match('^\+\+\+ ([^\s]*)', l)
                 if m:
                     file2 = m.groups()[0]
-                    revision2=l[l.index("("):l.index(")")+1]
                     break
-            add_filename(file1+" "+revision1, file2+" "+revision2, output_file)
+            if len(revisions) == 2:
+                add_filename(file1+" "+revisions[0], file2+" "+revisions[1], output_file)
+            else:
+                add_filename(file1, file2, output_file)
             hunk_off1, hunk_size1, hunk_off2, hunk_size2 = 0, 0, 0, 0
             continue
 
@@ -670,7 +684,7 @@ def main():
         # Use stdout if not output file is set
         if not ('output_file' in locals()):
             output_file = codecs.getwriter(encoding)(sys.stdout)
-        parse_input(input_file, output_file, input_file_name, output_file_name, exclude_headers, show_hunk_infos)
+        parse_input(input_file, output_file, input_file_name, output_file_name, exclude_headers, show_hunk_infos, revisions)
 
 def parse_from_memory(txt, exclude_headers, show_hunk_infos):
     " Parses diff from memory and returns a string with html "
