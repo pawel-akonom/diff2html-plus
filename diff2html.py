@@ -589,8 +589,8 @@ def parse_input_split(input_file, exclude_headers, show_hunk_infos, revisions):
 
     empty_buffer(output_file)
     output_file.write(table_footer.encode(encoding))
-    if not exclude_headers:
-        output_file.write(html_footer.format("", dtnow.strftime("%d.%m.%Y")).encode(encoding))
+#    if not exclude_headers:
+#        output_file.write(html_footer.format("", dtnow.strftime("%d.%m.%Y")).encode(encoding))
 
 
 def usage():
