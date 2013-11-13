@@ -57,6 +57,32 @@ desc = "File comparison"
 dtnow = datetime.datetime.now()
 modified_date = "%s+01:00"%dtnow.isoformat()
 
+index_html_hdr = """<!DOCTYPE html>
+    xmlns:dc="http://purl.org/dc/terms/">
+<head>
+    <meta charset="utf-8" />
+    <meta name="generator" content="diff2html.py (http://git.droids-corp.org/?p=diff2html.git)" />
+    <!--meta name="author" content="Fill in" /-->
+    <title>HTML Diff revisions "3394:3418" on "https://svne1.access.nokiasiemensnetworks.com/isource/svnroot/BTS_I_WN/trunk"</title>
+    <link rel="shortcut icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQAgMAAABinRfyAAAACVBMVEXAAAAAgAD///+K/HwIAAAAJUlEQVQI12NYBQQM2IgGBQ4mCIEQW7oyK4phampkGIQAc1G1AQCRxCNbyW92oQAAAABJRU5ErkJggg==" type="image/png" />
+    <meta property="dc:language" content="en" />
+    <!--meta property="dc:date" content="" /-->
+    <meta property="dc:modified" content="2013-07-25T15:19:25.867946+02:00" />
+    <meta name="description" content="File comparison" />
+    <meta property="dc:abstract" content="File comparison" />
+    <style>
+        body { font-size:10pt; font-family: Lucida Console, monospace}
+        table { border:0px; border-collapse:collapse; width: 100%; font-size:10pt; font-family: Lucida Console, monospace }
+        table.dc { border-top: 1px solid Black; border-left: 1px solid Black; border-bottom: 1px solid Gray; width: 100%; font-family: Lucida Console, monospace font-size: 10pt;}
+        tr.SectionAll td { border-left: none; border-top: none; border-bottom: 1px solid Black; border-right: 1px solid Black; text-align: center; color: #FFFFFF; background-color: #000000;}
+        tr.diffmodified td { border-left: none; border-top: 1px solid Black; border-right: 1px solid Black; padding: 4px; background: #FFFFA0}
+        tr.diffadded td { border-left: none; border-top: 1px solid Black; border-right: 1px solid Black; padding: 4px; background: #CCFFCC}
+        tr.diffdeleted td { border-left: none; border-top: 1px solid Black; border-right: 1px solid Black; padding: 4px; background: #FFCCCC}
+    </style>
+</head>
+<body>
+"""
+
 html_hdr = """<!DOCTYPE html>
 <html lang="{5}" dir="ltr"
     xmlns:dc="http://purl.org/dc/terms/">
@@ -93,15 +119,17 @@ html_footer = """
 <footer>
     <p>Modified at {1}. HTML formatting created by <a href="http://git.droids-corp.org/gitweb/?p=diff2html;a=summary">diff2html</a>.    </p>
 </footer>
-</body></html>
 """
 
 table_hdr = """
 		<table class="diff">
 """
 
-table_footer = """
-</table>
+table_footer = """</table>
+"""
+
+body_html_footer = """</body>
+</html>
 """
 
 DIFFON = "\x01"
@@ -417,6 +445,12 @@ def parse_input(input_file, output_file, input_file_name, output_file_name,
     global line1, line2
     global hunk_off1, hunk_size1, hunk_off2, hunk_size2
     line_number=0
+    if not exclude_headers:
+        title_suffix = ' ' + input_file_name
+        if len(revisions) == 2:
+            title_suffix += ' revisions ' + revisions[0] + ':' +  revisions[1]
+        output_file.write(html_hdr.format(title_suffix, encoding, desc, "", modified_date, lang).encode(encoding))
+    output_file.write(table_hdr.encode(encoding))
 
     while True:
         line_number+=1
@@ -428,16 +462,6 @@ def parse_input(input_file, output_file, input_file_name, output_file_name,
             exit (1)
         if l == "":
             break
-
-        if l.find("Index: ") == 0:
-            diff_file_name=l[7:].strip()
-            if not exclude_headers:
-                title_suffix = ' ' + diff_file_name
-                if len(revisions) == 2:
-                    title_suffix += ' revisions ' + revisions[0] + ':' +  revisions[1]
-                output_file.write(html_hdr.format(title_suffix, encoding, desc, "", modified_date, lang).encode(encoding))
-            output_file.write(table_hdr.encode(encoding))
-            
 
         m = re.match('^--- ([^\s]*)', l)
         if m:
@@ -496,6 +520,7 @@ def parse_input(input_file, output_file, input_file_name, output_file_name,
     output_file.write(table_footer.encode(encoding))
     if not exclude_headers:
         output_file.write(html_footer.format("", dtnow.strftime("%d.%m.%Y")).encode(encoding))
+        output_file.write(body_html_footer.encode(encoding))
 
 
 def parse_input_split(input_file, exclude_headers, show_hunk_infos, revisions):
@@ -524,6 +549,7 @@ def parse_input_split(input_file, exclude_headers, show_hunk_infos, revisions):
             if output_file is not None:
                 empty_buffer(output_file)
                 output_file.write(table_footer.encode(encoding))
+                output_file.write(body_html_footer.encode(encoding))
             output_file = codecs.open(output_file_name+".htm", "w")
             if not exclude_headers:
                 title_suffix = ' ' + diff_file_list[-1]
@@ -589,6 +615,7 @@ def parse_input_split(input_file, exclude_headers, show_hunk_infos, revisions):
 
     empty_buffer(output_file)
     output_file.write(table_footer.encode(encoding))
+    output_file.write(body_html_footer.encode(encoding))
 #    if not exclude_headers:
 #        output_file.write(html_footer.format("", dtnow.strftime("%d.%m.%Y")).encode(encoding))
 
