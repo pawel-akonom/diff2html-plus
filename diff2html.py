@@ -397,31 +397,31 @@ def add_index_row (file_path, mode, output_file):
         basename_file=file_path
 
     if mode == DIFFMODIFIED:
-        output_file.write('<tr class="diffmodified">'.encode(encoding))
+        output_file.write('<tr class="diffmodified">\n'.encode(encoding))
     elif mode == DIFFADDED:
-        output_file.write('<tr class="diffadded">'.encode(encoding))
+        output_file.write('<tr class="diffadded">\n'.encode(encoding))
     elif mode == DIFFDELETED:
-        output_file.write('<tr class="diffdeleted">'.encode(encoding))
+        output_file.write('<tr class="diffdeleted">\n'.encode(encoding))
     else:
-        output_file.write('<tr>'.encode(encoding))
+        output_file.write('<tr>\n'.encode(encoding))
 
     for i in (0,1):
-        output_file.write('<td colspan="4" ><a href="'+basename_file+'.htm">'+file_path+'</a></td>'.encode(encoding))
+        output_file.write('<td colspan="4" ><a href="'+basename_file+'.htm">'+file_path+'</a></td>\n'.encode(encoding))
 
-    output_file.write('</tr>'.encode(encoding))
+    output_file.write('</tr>\n'.encode(encoding))
 
 
 def add_index_table_header(revisions, output_file):
     left_table_title='Files'
     right_table_title='Files'
-    output_file.write('<table class="dc">'.encode(encoding))
-    output_file.write('<tr class="SectionAll">'.encode(encoding))
+    output_file.write('<table class="dc">\n'.encode(encoding))
+    output_file.write('<tr class="SectionAll">\n'.encode(encoding))
     if len(revisions) == 2:
         left_table_title += ' in revision '+revisions[0]
         right_table_title += ' in revision '+revisions[1]
-    output_file.write('<td colspan="4" class="DirItemHeader">'+left_table_title+'</td>'.encode(encoding))
-    output_file.write('<td colspan="4" class="DirItemHeader">'+right_table_title+'</td>'.encode(encoding))
-    output_file.write('</tr>'.encode(encoding))
+    output_file.write('<td colspan="4" class="DirItemHeader">'+left_table_title+'</td>\n'.encode(encoding))
+    output_file.write('<td colspan="4" class="DirItemHeader">'+right_table_title+'</td>\n'.encode(encoding))
+    output_file.write('</tr>\n'.encode(encoding))
 
 
 def empty_buffer(output_file):
