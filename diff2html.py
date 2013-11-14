@@ -406,7 +406,12 @@ def add_index_row (file_path, mode, output_file):
         output_file.write('<tr>\n'.encode(encoding))
 
     for i in (0,1):
-        output_file.write('<td colspan="4" ><a href="'+basename_file+'.htm">'+file_path+'</a></td>\n'.encode(encoding))
+        if mode == DIFFADDED and i == 0:
+            output_file.write('<td colspan="4" ><a href="'+basename_file+'.htm"></a></td>\n'.encode(encoding))
+        elif mode == DIFFDELETED and i == 1:
+            output_file.write('<td colspan="4" ><a href="'+basename_file+'.htm"></a></td>\n'.encode(encoding))
+        else:
+            output_file.write('<td colspan="4" ><a href="'+basename_file+'.htm">'+file_path+'</a></td>\n'.encode(encoding))
 
     output_file.write('</tr>\n'.encode(encoding))
 
@@ -464,8 +469,13 @@ def get_revisions(input_file):
             print ("Problem with "+encoding+" decoding "+str(input_file_name)+" file in line "+str(line_number))
             print (e)
             exit (1)
-        if len(revisions) == 2 or l == "":
+        if l == "":
             break
+        if len(revisions) == 2:
+            if int(revisions[0]) != 0 and int(revisions[1]) != 0:
+                break
+            else:
+                revisions=[]
         m=re.match('^[d-]{3}\s+.*\s+\(revision\s+[0-9]+\)', l)
         if m is not None:
             revision=re.split('\(revision |\)',l)[-2]
@@ -637,11 +647,16 @@ def parse_input_split(input_file, exclude_headers, show_hunk_infos, revisions):
         if m:
             empty_buffer(output_file)
             file1 = m.groups()[0]
+            revisions = []
+            revision=re.split('\(revision |\)',l)[-2]
+            revisions.append(revision)
             while True:
                 l = input_file.readline()
                 m = re.match('^\+\+\+ ([^\s]*)', l)
                 if m:
                     file2 = m.groups()[0]
+                    revision=re.split('\(revision |\)',l)[-2]
+                    revisions.append(revision)
                     break
             if len(revisions) == 2:
                 add_filename(file1+" "+revisions[0], file2+" "+revisions[1], output_file)
