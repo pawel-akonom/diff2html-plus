@@ -53,31 +53,36 @@ lang = "en"
 algorithm = 0
 diff_file_list = []
 
+DIFFMODIFIED=0
+DIFFADDED=1
+DIFFDELETED=2
+
 desc = "File comparison"
 dtnow = datetime.datetime.now()
 modified_date = "%s+01:00"%dtnow.isoformat()
 
 index_html_hdr = """<!DOCTYPE html>
+<html lang="{5}" dir="ltr"
     xmlns:dc="http://purl.org/dc/terms/">
 <head>
-    <meta charset="utf-8" />
+    <meta charset="{1}" />
     <meta name="generator" content="diff2html.py (http://git.droids-corp.org/?p=diff2html.git)" />
     <!--meta name="author" content="Fill in" /-->
-    <title>HTML Diff revisions "3394:3418" on "https://svne1.access.nokiasiemensnetworks.com/isource/svnroot/BTS_I_WN/trunk"</title>
+    <title>HTML Diff{0}</title>
     <link rel="shortcut icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQAgMAAABinRfyAAAACVBMVEXAAAAAgAD///+K/HwIAAAAJUlEQVQI12NYBQQM2IgGBQ4mCIEQW7oyK4phampkGIQAc1G1AQCRxCNbyW92oQAAAABJRU5ErkJggg==" type="image/png" />
-    <meta property="dc:language" content="en" />
-    <!--meta property="dc:date" content="" /-->
-    <meta property="dc:modified" content="2013-07-25T15:19:25.867946+02:00" />
-    <meta name="description" content="File comparison" />
-    <meta property="dc:abstract" content="File comparison" />
+    <meta property="dc:language" content="{5}" />
+    <!--meta property="dc:date" content="{3}" /-->
+    <meta property="dc:modified" content="{4}" />
+    <meta name="description" content="{2}" />
+    <meta property="dc:abstract" content="{2}" />
     <style>
-        body { font-size:10pt; font-family: Lucida Console, monospace}
-        table { border:0px; border-collapse:collapse; width: 100%; font-size:10pt; font-family: Lucida Console, monospace }
-        table.dc { border-top: 1px solid Black; border-left: 1px solid Black; border-bottom: 1px solid Gray; width: 100%; font-family: Lucida Console, monospace font-size: 10pt;}
-        tr.SectionAll td { border-left: none; border-top: none; border-bottom: 1px solid Black; border-right: 1px solid Black; text-align: center; color: #FFFFFF; background-color: #000000;}
-        tr.diffmodified td { border-left: none; border-top: 1px solid Black; border-right: 1px solid Black; padding: 4px; background: #FFFFA0}
-        tr.diffadded td { border-left: none; border-top: 1px solid Black; border-right: 1px solid Black; padding: 4px; background: #CCFFCC}
-        tr.diffdeleted td { border-left: none; border-top: 1px solid Black; border-right: 1px solid Black; padding: 4px; background: #FFCCCC}
+        body {{ font-size:10pt; font-family: Lucida Console, monospace}}
+        table {{ border:0px; border-collapse:collapse; width: 100%; font-size:10pt; font-family: Lucida Console, monospace }}
+        table.dc {{ border-top: 1px solid Black; border-left: 1px solid Black; border-bottom: 1px solid Gray; width: 100%; font-family: Lucida Console, monospace font-size: 10pt;}}
+        tr.SectionAll td {{ border-left: none; border-top: none; border-bottom: 1px solid Black; border-right: 1px solid Black; text-align: center; color: #FFFFFF; background-color: #000000;}}
+        tr.diffmodified td {{ border-left: none; border-top: 1px solid Black; border-right: 1px solid Black; padding: 4px; background: #FFFFA0}}
+        tr.diffadded td {{ border-left: none; border-top: 1px solid Black; border-right: 1px solid Black; padding: 4px; background: #CCFFCC}}
+        tr.diffdeleted td {{ border-left: none; border-top: 1px solid Black; border-right: 1px solid Black; padding: 4px; background: #FFCCCC}}
     </style>
 </head>
 <body>
@@ -100,7 +105,7 @@ html_hdr = """<!DOCTYPE html>
     <style>
         table {{ border:0px; border-collapse:collapse; width: 100%; font-size:0.75em; font-family: Lucida Console, monospace }}
         td.line {{ color:#8080a0 }}
-        th {{ background: black; color: white }}
+        th {{ background: black; color: white; width: 50% }}
         tr.diffunmodified td {{ background: #D0D0E0 }}
         tr.diffhunk td {{ background: #A0A0A0 }}
         tr.diffadded td {{ background: #CCFFCC }}
@@ -384,6 +389,40 @@ def add_line(s1, s2, output_file):
     if s2 != "":
         line2 += 1
 
+def add_index_row (file_path, mode, output_file):
+    last_separator_index = file_path.rfind('/')
+    if last_separator_index != -1:
+        basename_file=file_path[last_separator_index+1:]
+    else:
+        basename_file=file_path
+
+    if mode == DIFFMODIFIED:
+        output_file.write('<tr class="diffmodified">'.encode(encoding))
+    elif mode == DIFFADDED:
+        output_file.write('<tr class="diffadded">'.encode(encoding))
+    elif mode == DIFFDELETED:
+        output_file.write('<tr class="diffdeleted">'.encode(encoding))
+    else:
+        output_file.write('<tr>'.encode(encoding))
+
+    for i in (0,1):
+        output_file.write('<td colspan="4" ><a href="'+basename_file+'.htm">'+file_path+'</a></td>'.encode(encoding))
+
+    output_file.write('</tr>'.encode(encoding))
+
+
+def add_index_table_header(revisions, output_file):
+    left_table_title='Files'
+    right_table_title='Files'
+    output_file.write('<table class="dc">'.encode(encoding))
+    output_file.write('<tr class="SectionAll">'.encode(encoding))
+    if len(revisions) == 2:
+        left_table_title += ' in revision '+revisions[0]
+        right_table_title += ' in revision '+revisions[1]
+    output_file.write('<td colspan="4" class="DirItemHeader">'+left_table_title+'</td>'.encode(encoding))
+    output_file.write('<td colspan="4" class="DirItemHeader">'+right_table_title+'</td>'.encode(encoding))
+    output_file.write('</tr>'.encode(encoding))
+
 
 def empty_buffer(output_file):
     global buf
@@ -437,6 +476,38 @@ def get_revisions(input_file):
             revisions.append(revision)
     input_file.seek(0)
     return revisions
+
+
+def generate_index(svn_diff_summarize_file, output_file, exclude_headers, revisions, url):
+    body_content=''
+    if not exclude_headers:
+        title_suffix = ' ' + url
+        if len(revisions) == 2:
+            title_suffix += ' revisions ' + revisions[0] + ':' +  revisions[1]
+        output_file.write(index_html_hdr.format(title_suffix, encoding, desc, "", modified_date, lang).encode(encoding))
+    output_file.write(table_hdr.encode(encoding))
+    if url is not None and len(url) > 0:
+        body_content+="HTML Diff on "+url+" <br/>\n"
+    if len(revisions) == 2:
+        body_content+="Different between revisions: "+revisions[0]+" and "+revisions[1]+" <br/>\n"
+    body_content+="Produced: %.2d/%.2d/%d %.2d:%.2d:%.2d  <br/><br/>\n" % (dtnow.month, dtnow.day, dtnow.year, dtnow.hour, dtnow.minute, dtnow.second)
+    output_file.write(body_content.encode(encoding))
+    add_index_table_header(revisions, output_file)
+    while True:
+        l = svn_diff_summarize_file.readline()
+        if l == "":
+            break
+        for file_path in diff_file_list:
+            if l.find(file_path) > 0:
+                break
+        if re.match('^D[ADM]?\s+.*',l):
+            add_index_row(file_path, DIFFDELETED, output_file)
+        elif re.match('^A[ADM]?\s+.*',l):
+            add_index_row(file_path, DIFFADDED, output_file)
+        elif re.match('^M[ADM]?\s+.*',l):
+            add_index_row(file_path, DIFFMODIFIED, output_file)
+    output_file.write(body_html_footer.encode(encoding))
+    output_file.write(table_footer.encode(encoding))
 
 
 def parse_input(input_file, output_file, input_file_name, output_file_name,
@@ -529,7 +600,7 @@ def parse_input_split(input_file, exclude_headers, show_hunk_infos, revisions):
     global diff_file_list
     global hunk_off1, hunk_size1, hunk_off2, hunk_size2
     output_file = None
-    line_number=0
+    line_number = 0
 
     while True:
         line_number+=1
@@ -545,12 +616,14 @@ def parse_input_split(input_file, exclude_headers, show_hunk_infos, revisions):
             diff_file_list.append(output_file_name)
             last_separator_index = output_file_name.rfind('/')
             if last_separator_index != -1:
-                output_file_name=output_file_name[last_separator_index+1:]
+                basename_out_file_name=output_file_name[last_separator_index+1:]
+            else:
+                basename_out_file_name=output_file_name
             if output_file is not None:
                 empty_buffer(output_file)
                 output_file.write(table_footer.encode(encoding))
                 output_file.write(body_html_footer.encode(encoding))
-            output_file = codecs.open(output_file_name+".htm", "w")
+            output_file = codecs.open(basename_out_file_name+".htm", "w")
             if not exclude_headers:
                 title_suffix = ' ' + diff_file_list[-1]
                 if len(revisions) == 2:
@@ -639,7 +712,8 @@ stdout may not work with UTF-8, instead use -o option.
    -k          show hunk infos
    -a algo     line diff algorithm (0: linediff characters, 1: word, 2: simplediff characters) (default 0)
    -s          split output to seperate html files (filenames from diff with htm extension), -o filename is ignored
-   -u url      url to repository from which diff was generated
+   -u url      url to repository from which diff was generated, it is only information added to html
+   -m file     set input file with 'svn diff --summarize' content, it will be used to generate index.htm with table of content
    -h          show help and exit
 '''
 
@@ -652,17 +726,20 @@ def main():
 
     input_file_name = ''
     output_file_name = ''
+    svn_diff_summarize_file = ''
     url=''
 
     exclude_headers = False
     show_hunk_infos = False
     split = False
+    summarize = False
 
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "he:i:o:xt:l:rka:s",
+        opts, args = getopt.getopt(sys.argv[1:], "he:i:o:xt:l:r:k:a:su:m:",
                                    ["help", "encoding=", "input=", "output=",
                                     "exclude-html-headers", "tabsize=",
-                                    "linesize=", "show-cr", "show-hunk-infos", "algorithm=", "split"])
+                                    "linesize=", "show-cr", "show-hunk-infos",
+                                    "algorithm=", "split", "url", "svn-diff-summarize="])
     except getopt.GetoptError, err:
         print unicode(err) # will print something like "option -a not recognized"
         usage()
@@ -696,6 +773,9 @@ def main():
             split = True
         elif o in ("-u", "--url"):
             url = a
+        elif o in ("-m", "--svn-diff-summarize"):
+            summarize = True
+            svn_diff_summarize_file= codecs.open(a, "r", encoding)
         else:
             assert False, "unhandled option"
 
@@ -712,6 +792,10 @@ def main():
         if not ('output_file' in locals()):
             output_file = codecs.getwriter(encoding)(sys.stdout)
         parse_input(input_file, output_file, input_file_name, output_file_name, exclude_headers, show_hunk_infos, revisions)
+
+    if summarize:
+        index_file=codecs.open("index.htm", "w")
+        generate_index(svn_diff_summarize_file, index_file, exclude_headers, revisions, url)
 
 def parse_from_memory(txt, exclude_headers, show_hunk_infos):
     " Parses diff from memory and returns a string with html "
