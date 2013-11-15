@@ -537,12 +537,33 @@ def parse_input(input_file, output_file, input_file_name, output_file_name,
         line_number+=1
         try:
             l = input_file.readline()
+        except EOFError :
+            break
         except UnicodeDecodeError, e:
             print ("Problem with "+encoding+" decoding "+str(input_file_name)+" file in line "+str(line_number))
             print (e)
             exit (1)
-        if l == "":
+
+        # if diff starts with svn properties, skip properties and go to first "Index:" line
+        if line_number == 1:
+            while l.find("Index: ") != 0:
+                line_number+=1
+                try:
+                    l = input_file.readline()
+                except EOFError :
+                     break 
+
+        if not l:
             break
+
+        # skip svn properties lines
+        if l.find("Property changes on:") == 0:
+            while l != "" and l.find("Index: ") != 0 :
+                line_number+=1
+                try:
+                    l = input_file.readline()
+                except EOFError :
+                    break
 
         m = re.match('^--- ([^\s]*)', l)
         if m:
@@ -616,10 +637,33 @@ def parse_input_split(input_file, exclude_headers, show_hunk_infos, revisions):
         line_number+=1
         try:
             l = input_file.readline()
+        except EOFError :
+            break
         except UnicodeDecodeError, e:
             print ("Problem with "+encoding+" decoding "+str(input_file_name)+" file in line "+str(line_number))
             print (e)
             exit (1)
+
+        # if diff starts with svn properties, skip properties and go to first "Index:" line
+        if line_number == 1:
+            while l.find("Index: ") != 0:
+                line_number+=1
+                try:
+                    l = input_file.readline()
+                except EOFError :
+                     break 
+        
+        if not l:
+            break
+
+        # skip svn properties lines
+        if l.find("Property changes on:") == 0:
+            while l != "" and l.find("Index: ") != 0 :
+                line_number+=1
+                try:
+                    l = input_file.readline()
+                except EOFError :
+                    break
 
         if l.find("Index: ") == 0:
             output_file_name=l[7:].strip()
@@ -640,8 +684,6 @@ def parse_input_split(input_file, exclude_headers, show_hunk_infos, revisions):
                     title_suffix += ' revisions ' + revisions[0] + ':' +  revisions[1] 
                 output_file.write(html_hdr.format(title_suffix, encoding, desc, "", modified_date, lang).encode(encoding))
             output_file.write(table_hdr.encode(encoding))
-        if l == "":
-            break
 
         m = re.match('^--- ([^\s]*)', l)
         if m:
