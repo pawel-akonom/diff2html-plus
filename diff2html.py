@@ -35,10 +35,10 @@
 #   and display those directly.
 #
 ##########################################################################
-# FORKING project to diff2html-plus by Pawel Akonom
-# original diff2html can be found here:
+#
+# Forking project to diff2html-plus by Pawel Akonom
+# Original diff2html project can be found here:
 # can be found here: http://git.droids-corp.org/?p=diff2html.git
-
 #
 # Modifications:
 # - split argument added: html diff file is splited for each file
