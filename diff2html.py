@@ -518,7 +518,7 @@ def generate_index(svn_diff_summarize_file, output_file, exclude_headers, revisi
     if url is not None and len(url) > 0:
         body_content+="HTML Diff on "+url+" <br/>\n"
     if len(revisions) == 2:
-        body_content+="Different between revisions: "+revisions[0]+" and "+revisions[1]+" <br/>\n"
+        body_content+="Difference between revisions: "+revisions[0]+" and "+revisions[1]+" <br/>\n"
     body_content+="Produced: %.2d/%.2d/%d %.2d:%.2d:%.2d  <br/><br/>\n" % (dtnow.month, dtnow.day, dtnow.year, dtnow.hour, dtnow.minute, dtnow.second)
     output_file.write(body_content.encode(encoding))
     add_index_table_header(revisions, output_file)
