@@ -52,6 +52,8 @@
 #   in the index.htm file with this argument.
 # - svn diff can have a special properties section which is skipped
 #   when html diff file is generated
+# - legend about the colors added to html footer
+#
 
 import sys, re, htmlentitydefs, getopt, StringIO, codecs, datetime
 try:
@@ -78,34 +80,6 @@ desc = "File comparison"
 dtnow = datetime.datetime.now()
 modified_date = "%s+01:00"%dtnow.isoformat()
 
-index_html_hdr = """<!DOCTYPE html>
-<html lang="{5}" dir="ltr"
-    xmlns:dc="http://purl.org/dc/terms/">
-<head>
-    <meta charset="{1}" />
-    <meta name="generator" content="diff2html.py (https://github.com/pawel-akonom/diff2html-plus)" />
-    <!--meta name="author" content="Fill in" /-->
-    <title>HTML Diff{0}</title>
-    <link rel="shortcut icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQAgMAAABinRfyAAAACVBMVEXAAAAAgAD///+K/HwIAAAAJUlEQVQI12NYBQQM2IgGBQ4mCIEQW7oyK4phampkGIQAc1G1AQCRxCNbyW92oQAAAABJRU5ErkJggg==" type="image/png" />
-    <meta property="dc:language" content="{5}" />
-    <!--meta property="dc:date" content="{3}" /-->
-    <meta property="dc:modified" content="{4}" />
-    <meta name="description" content="{2}" />
-    <meta property="dc:abstract" content="{2}" />
-    <style>
-        body {{ font-size:10pt; font-family: Lucida Console, monospace}}
-        table {{ border:0px; border-collapse:collapse; width: 100%; font-size:10pt; font-family: Lucida Console, monospace }}
-        table.dc {{ border-top: 1px solid Black; border-left: 1px solid Black; border-bottom: 1px solid Gray; width: 100%; font-family: Lucida Console, monospace font-size: 10pt;}}
-        tr.SectionAll td {{ border-left: none; border-top: none; border-bottom: 1px solid Black; border-right: 1px solid Black; text-align: center; color: #FFFFFF; background-color: #000000;}}
-        tr.diffmodified td {{ border-left: none; border-top: 1px solid Black; border-right: 1px solid Black; padding: 4px; background: #FFFFA0}}
-        tr.diffunmodified td {{ border-left: none; border-top: 1px solid Black; border-right: 1px solid Black; padding: 4px; background: #D0D0E0}}
-        tr.diffadded td {{ border-left: none; border-top: 1px solid Black; border-right: 1px solid Black; padding: 4px; background: #CCFFCC}}
-        tr.diffdeleted td {{ border-left: none; border-top: 1px solid Black; border-right: 1px solid Black; padding: 4px; background: #FFCCCC}}
-    </style>
-</head>
-<body>
-"""
-
 html_hdr = """<!DOCTYPE html>
 <html lang="{5}" dir="ltr"
     xmlns:dc="http://purl.org/dc/terms/">
@@ -121,14 +95,18 @@ html_hdr = """<!DOCTYPE html>
     <meta name="description" content="{2}" />
     <meta property="dc:abstract" content="{2}" />
     <style>
-        table {{ border:0px; border-collapse:collapse; width: 100%; font-size:0.75em; font-family: Lucida Console, monospace }}
+        div.dc {{ font-size:10pt; font-family: Lucida Console, monospace }}
+        table {{ border:0px; border-collapse:collapse; width: 100%; font-size:10pt; font-family: Lucida Console, monospace }}
+        table.legend {{ border-top: 1px solid Black; border-left: 1px solid Black; border-right: 1px solid Black; border-bottom: 1px solid Black; width: auto; border-collapse: collapse }}
         td.line {{ color:#8080a0 }}
+        td.diritem {{ padding:5px; border-top: 1px solid Black; border-left: 1px solid Black; border-right: 1px solid Black; border-bottom: 1px solid Black;}}
         th {{ background: black; color: white; width: 50% }}
+        tr.SectionAll td {{ border-left: none; border-top: none; border-bottom: 1px solid Black; border-right: 1px solid Black; text-align: center; color: #FFFFFF; background-color: #000000;}}
         tr.diffunmodified td {{ background: #D0D0E0 }}
         tr.diffhunk td {{ background: #A0A0A0 }}
         tr.diffadded td {{ background: #CCFFCC }}
         tr.diffdeleted td {{ background: #FFCCCC }}
-        tr.diffchanged td {{ background: #FFFFA0 }}
+        tr.diffmodified td {{ background: #FFFFA0 }}
         span.diffchanged2 {{ background: #E0C880 }}
         span.diffponct {{ color: #B08080 }}
         tr.diffmisc td {{}}
@@ -140,7 +118,24 @@ html_hdr = """<!DOCTYPE html>
 
 html_footer = """
 <footer>
-    <p>HTML formatting created by <a href="https://github.com/pawel-akonom/diff2html-plus">diff2html</a> Sack Team tool.</p>
+    <div class=dc>
+    <p>HTML formatting created by <a href="https://github.com/pawel-akonom/diff2html-plus">diff2html-plus</a>diff2html-plus</p>
+    <span style="font-size: 8pt" >Legend:</span>
+    </div>
+    <table class="legend">
+        <tr class="diffmodified">
+            <td colspan="4" ><span style="font-size: 8pt" >modified</span></td>
+        </tr>
+        <tr class="diffunmodified">
+            <td colspan="4" ><span style="font-size: 8pt" >unmodified</span></td>
+        </tr>
+        <tr class="diffadded">
+            <td colspan="4" ><span style="font-size: 8pt" >added</span></td>
+        </tr>
+        <tr class="diffdeleted">
+            <td colspan="4" ><span style="font-size: 8pt" >deleted</span></td>
+        </tr>
+     </table>
 </footer>
 """
 
@@ -373,7 +368,7 @@ def add_line(s1, s2, output_file):
     elif s1 == s2:
         type_name = "unmodified"
     else:
-        type_name = "changed"
+        type_name = "modified"
         if algorithm == 1:
             s1, s2 = diff_changed_words_ts(orig1, orig2)
         elif algorithm == 2:
@@ -425,11 +420,11 @@ def add_index_row (file_path, mode, output_file):
 
     for i in (0,1):
         if mode == DIFFADDED and i == 0:
-            output_file.write('<td colspan="4" ><a href="'+basename_file+'.htm"></a></td>\n'.encode(encoding))
+            output_file.write('<td colspan="4" class="diritem"><a href="'+basename_file+'.htm"></a></td>\n'.encode(encoding))
         elif mode == DIFFDELETED and i == 1:
-            output_file.write('<td colspan="4" ><a href="'+basename_file+'.htm"></a></td>\n'.encode(encoding))
+            output_file.write('<td colspan="4" class="diritem"><a href="'+basename_file+'.htm"></a></td>\n'.encode(encoding))
         else:
-            output_file.write('<td colspan="4" ><a href="'+basename_file+'.htm">'+file_path+'</a></td>\n'.encode(encoding))
+            output_file.write('<td colspan="4" class="diritem"><a href="'+basename_file+'.htm">'+file_path+'</a></td>\n'.encode(encoding))
 
     output_file.write('</tr>\n'.encode(encoding))
 
@@ -437,13 +432,13 @@ def add_index_row (file_path, mode, output_file):
 def add_index_table_header(revisions, output_file):
     left_table_title='Files'
     right_table_title='Files'
-    output_file.write('<table class="dc">\n'.encode(encoding))
+    output_file.write('<table >\n'.encode(encoding))
     output_file.write('<tr class="SectionAll">\n'.encode(encoding))
     if len(revisions) == 2:
         left_table_title += ' in revision '+revisions[0]
         right_table_title += ' in revision '+revisions[1]
-    output_file.write('<td colspan="4" class="DirItemHeader">'+left_table_title+'</td>\n'.encode(encoding))
-    output_file.write('<td colspan="4" class="DirItemHeader">'+right_table_title+'</td>\n'.encode(encoding))
+    output_file.write('<td colspan="4" class="diritem">'+left_table_title+'</td>\n'.encode(encoding))
+    output_file.write('<td colspan="4" class="diritem">'+right_table_title+'</td>\n'.encode(encoding))
     output_file.write('</tr>\n'.encode(encoding))
 
 
@@ -513,13 +508,15 @@ def generate_index(svn_diff_summarize_file, output_file, exclude_headers, revisi
         title_suffix = ' ' + url
         if len(revisions) == 2:
             title_suffix += ' revisions ' + revisions[0] + ':' +  revisions[1]
-        output_file.write(index_html_hdr.format(title_suffix, encoding, desc, "", modified_date, lang).encode(encoding))
+        output_file.write(html_hdr.format(title_suffix, encoding, desc, "", modified_date, lang).encode(encoding))
     output_file.write(table_hdr.encode(encoding))
+    body_content+="<div class=dc>\n"
     if url is not None and len(url) > 0:
         body_content+="HTML Diff on "+url+" <br/>\n"
     if len(revisions) == 2:
         body_content+="Difference between revisions: "+revisions[0]+" and "+revisions[1]+" <br/>\n"
     body_content+="Produced: %.2d/%.2d/%d %.2d:%.2d:%.2d  <br/><br/>\n" % (dtnow.month, dtnow.day, dtnow.year, dtnow.hour, dtnow.minute, dtnow.second)
+    body_content+="</div>\n"
     output_file.write(body_content.encode(encoding))
     add_index_table_header(revisions, output_file)
     while True:
