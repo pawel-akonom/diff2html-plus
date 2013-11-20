@@ -536,18 +536,20 @@ def generate_index(svn_diff_summarize_file, output_file, exclude_headers, revisi
     output_file.write(body_html_footer.encode(encoding))
     output_file.write(html_footer.encode(encoding))
 
-def parse_input(input_file, output_file, input_file_name, output_file_name,
-                exclude_headers, show_hunk_infos, revisions):
+
+def parse_input(input_file, output_file, input_file_name, output_file_name, split, exclude_headers, show_hunk_infos, revisions):
     global add_cpt, del_cpt
     global line1, line2
     global hunk_off1, hunk_size1, hunk_off2, hunk_size2
     line_number=0
-    if not exclude_headers:
-        title_suffix = ' ' + input_file_name
-        if len(revisions) == 2:
-            title_suffix += ' revisions ' + revisions[0] + ':' +  revisions[1]
-        output_file.write(html_hdr.format(title_suffix, encoding, desc, "", modified_date, lang).encode(encoding))
-    output_file.write(table_hdr.encode(encoding))
+	
+    if not split:
+        if not exclude_headers:
+            title_suffix = ' ' + input_file_name
+            if len(revisions) == 2:
+                title_suffix += ' revisions ' + revisions[0] + ':' +  revisions[1]
+            output_file.write(html_hdr.format(title_suffix, encoding, desc, "", modified_date, lang).encode(encoding))
+        output_file.write(table_hdr.encode(encoding))
 
     while True:
         line_number+=1
@@ -580,16 +582,43 @@ def parse_input(input_file, output_file, input_file_name, output_file_name,
                     l = input_file.readline()
                 except EOFError :
                     break
-
+        if split:
+            if l.find("Index: ") == 0:
+                output_file_name=l[7:].strip()
+                diff_file_list.append(output_file_name)
+                last_separator_index = output_file_name.rfind('/')
+                if last_separator_index != -1:
+                    basename_out_file_name=output_file_name[last_separator_index+1:]
+                else:
+                    basename_out_file_name=output_file_name
+                if output_file is not None:
+                    empty_buffer(output_file)
+                    output_file.write(table_footer.encode(encoding))
+                    output_file.write(body_html_footer.encode(encoding))
+                output_file = codecs.open(basename_out_file_name+".htm", "w")
+                if not exclude_headers:
+                    title_suffix = ' ' + diff_file_list[-1]
+                    if len(revisions) == 2:
+                        title_suffix += ' revisions ' + revisions[0] + ':' +  revisions[1] 
+                    output_file.write(html_hdr.format(title_suffix, encoding, desc, "", modified_date, lang).encode(encoding))
+                output_file.write(table_hdr.encode(encoding))
+					
         m = re.match('^--- ([^\s]*)', l)
         if m:
             empty_buffer(output_file)
             file1 = m.groups()[0]
+            if split:
+                revisions = []
+                revision=re.split('\(revision |\)',l)[-2]
+                revisions.append(revision)
             while True:
                 l = input_file.readline()
                 m = re.match('^\+\+\+ ([^\s]*)', l)
                 if m:
                     file2 = m.groups()[0]
+                    if split:
+                        revision=re.split('\(revision |\)',l)[-2]
+                        revisions.append(revision)
                     break
             if len(revisions) == 2:
                 add_filename(file1+" "+revisions[0], file2+" "+revisions[1], output_file)
@@ -636,135 +665,12 @@ def parse_input(input_file, output_file, input_file_name, output_file_name,
 
     empty_buffer(output_file)
     output_file.write(table_footer.encode(encoding))
-    if not exclude_headers:
-        output_file.write(html_footer.format("", dtnow.strftime("%d.%m.%Y")).encode(encoding))
+    if split:
         output_file.write(body_html_footer.encode(encoding))
-
-
-def parse_input_split(input_file, exclude_headers, show_hunk_infos, revisions):
-    global add_cpt, del_cpt
-    global line1, line2
-    global diff_file_list
-    global hunk_off1, hunk_size1, hunk_off2, hunk_size2
-    output_file = None
-    line_number = 0
-
-    while True:
-        line_number+=1
-        try:
-            l = input_file.readline()
-        except EOFError :
-            break
-        except UnicodeDecodeError, e:
-            print ("Problem with "+encoding+" decoding "+str(input_file_name)+" file in line "+str(line_number))
-            print (e)
-            exit (1)
-
-        # if diff starts with svn properties, skip properties and go to first "Index:" line
-        if line_number == 1:
-            while l.find("Index: ") != 0:
-                line_number+=1
-                try:
-                    l = input_file.readline()
-                except EOFError :
-                     break 
-        
-        if not l:
-            break
-
-        # skip svn properties lines
-        if l.find("Property changes on:") == 0:
-            while l != "" and l.find("Index: ") != 0 :
-                line_number+=1
-                try:
-                    l = input_file.readline()
-                except EOFError :
-                    break
-
-        if l.find("Index: ") == 0:
-            output_file_name=l[7:].strip()
-            diff_file_list.append(output_file_name)
-            last_separator_index = output_file_name.rfind('/')
-            if last_separator_index != -1:
-                basename_out_file_name=output_file_name[last_separator_index+1:]
-            else:
-                basename_out_file_name=output_file_name
-            if output_file is not None:
-                empty_buffer(output_file)
-                output_file.write(table_footer.encode(encoding))
-                output_file.write(body_html_footer.encode(encoding))
-            output_file = codecs.open(basename_out_file_name+".htm", "w")
-            if not exclude_headers:
-                title_suffix = ' ' + diff_file_list[-1]
-                if len(revisions) == 2:
-                    title_suffix += ' revisions ' + revisions[0] + ':' +  revisions[1] 
-                output_file.write(html_hdr.format(title_suffix, encoding, desc, "", modified_date, lang).encode(encoding))
-            output_file.write(table_hdr.encode(encoding))
-
-        m = re.match('^--- ([^\s]*)', l)
-        if m:
-            empty_buffer(output_file)
-            file1 = m.groups()[0]
-            revisions = []
-            revision=re.split('\(revision |\)',l)[-2]
-            revisions.append(revision)
-            while True:
-                l = input_file.readline()
-                m = re.match('^\+\+\+ ([^\s]*)', l)
-                if m:
-                    file2 = m.groups()[0]
-                    revision=re.split('\(revision |\)',l)[-2]
-                    revisions.append(revision)
-                    break
-            if len(revisions) == 2:
-                add_filename(file1+" "+revisions[0], file2+" "+revisions[1], output_file)
-            else:
-                add_filename(file1, file2, output_file)
-            hunk_off1, hunk_size1, hunk_off2, hunk_size2 = 0, 0, 0, 0
-            continue
-
-        m = re.match("@@ -(\d+),?(\d*) \+(\d+),?(\d*)", l)
-        if m:
-            empty_buffer(output_file)
-            hunk_data = map(lambda x:x=="" and 1 or int(x), m.groups())
-            hunk_off1, hunk_size1, hunk_off2, hunk_size2 = hunk_data
-            line1, line2 = hunk_off1, hunk_off2
-            add_hunk(output_file, show_hunk_infos)
-            continue
-
-        if hunk_size1 == 0 and hunk_size2 == 0:
-            empty_buffer(output_file)
-            add_comment(l, output_file)
-            continue
-
-        if re.match("^\+", l):
-            add_cpt += 1
-            hunk_size2 -= 1
-            buf.append((None, l[1:]))
-            continue
-
-        if re.match("^\-", l):
-            del_cpt += 1
-            hunk_size1 -= 1
-            buf.append((l[1:], None))
-            continue
-
-        if re.match("^\ ", l) and hunk_size1 and hunk_size2:
-            empty_buffer(output_file)
-            hunk_size1 -= 1
-            hunk_size2 -= 1
-            buf.append((l[1:], l[1:]))
-            continue
-
-        empty_buffer(output_file)
-        add_comment(l, output_file)
-
-    empty_buffer(output_file)
-    output_file.write(table_footer.encode(encoding))
-    output_file.write(body_html_footer.encode(encoding))
-#    if not exclude_headers:
-#        output_file.write(html_footer.format("", dtnow.strftime("%d.%m.%Y")).encode(encoding))
-
+    else:
+        if not exclude_headers:
+            output_file.write(html_footer.format("", dtnow.strftime("%d.%m.%Y")).encode(encoding))
+            output_file.write(body_html_footer.encode(encoding))
 
 def usage():
     print '''
@@ -859,12 +765,12 @@ def main():
     revisions = get_revisions(input_file)
 
     if split:
-        parse_input_split(input_file, exclude_headers, show_hunk_infos, revisions)
+        parse_input(input_file, None, None, None, split, exclude_headers, show_hunk_infos, revisions)
     else:
         # Use stdout if not output file is set
         if not ('output_file' in locals()):
             output_file = codecs.getwriter(encoding)(sys.stdout)
-        parse_input(input_file, output_file, input_file_name, output_file_name, exclude_headers, show_hunk_infos, revisions)
+        parse_input(input_file, output_file, input_file_name, output_file_name, split, exclude_headers, show_hunk_infos, revisions)
 
     if summarize:
         index_file=codecs.open("index.htm", "w")
@@ -874,7 +780,7 @@ def parse_from_memory(txt, exclude_headers, show_hunk_infos):
     " Parses diff from memory and returns a string with html "
     input_stream = StringIO.StringIO(txt)
     output_stream = StringIO.StringIO()
-    parse_input(input_stream, output_stream, '', '', exclude_headers, show_hunk_infos)
+    parse_input(input_stream, output_stream, None, None, exclude_headers, split, show_hunk_infos, revisions)
     return output_stream.getvalue()
 
 
