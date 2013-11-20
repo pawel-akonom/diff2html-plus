@@ -119,7 +119,7 @@ html_hdr = """<!DOCTYPE html>
 html_footer = """
 <footer>
     <div class=dc>
-    <p>HTML formatting created by <a href="https://github.com/pawel-akonom/diff2html-plus">diff2html-plus</a>diff2html-plus</p>
+    <p>HTML formatting created by <a href="https://github.com/pawel-akonom/diff2html-plus">diff2html-plus</a></p>
     <span style="font-size: 8pt" >Legend:</span>
     </div>
     <table class="legend">
