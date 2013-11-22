@@ -1,0 +1,36 @@
+diff2html-plus
+==============
+
+Fork of diff2html v 1.0 from droids-corp.org
+
+Fork was created to add new functionality to diff2html - split html files for each file from diff 
+and create index.htm file which contain table of content with links to all splited html files.
+
+It was implemented and tested on subversion diff format. Git support can be added in the future.
+
+requirements
+------------
+
+python modules:
+
+simplediff python module is needed:
+https://github.com/paulgb/simplediff
+
+python versions:
+
+2.6.x or 2.7.x
+
+usage
+-----
+
+1. Generate diff file between revisions REV-A and REV-B:
+
+svn diff -r REAV-A:REV-B <URL to repository> > file.diff
+
+2. Generate summary file needed to create index.htm file:
+
+svn diff -r REV-A:REV-B --summary <URL to repository> > summaryfile.txt
+
+3. Generate html diff files splited and with index.htm:
+
+diff2html.py -i file.dif -s -m summaryfile.txt -u <URL to repository>
