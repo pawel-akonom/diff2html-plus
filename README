@@ -27,10 +27,10 @@ usage
 
 svn diff -r REAV-A:REV-B <URL to repository> > file.diff
 
-2. Generate summary file needed to create index.htm file:
+2. Generate summary file between revisions REV-A and REV-B needed to create index.htm file:
 
 svn diff -r REV-A:REV-B --summary <URL to repository> > summaryfile.txt
 
-3. Generate html diff files splited and with index.htm:
+3. Generate splited html diff with index.htm:
 
 diff2html.py -i file.dif -s -m summaryfile.txt -u <URL to repository>
