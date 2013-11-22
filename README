@@ -3,7 +3,7 @@ diff2html-plus
 
 Fork of diff2html v 1.0 from droids-corp.org
 
-Fork was created to add new functionality to diff2html - split html files for each file from diff 
+Fork was created to add new functionality to diff2html - split html files for each file in diff
 and create index.htm file which contain table of content with links to all splited html files.
 
 It was implemented and tested on subversion diff format. Git support can be added in the future.
