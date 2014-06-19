@@ -25,12 +25,12 @@ usage
 
 1. Generate diff file between revisions REV-A and REV-B:
 
-svn diff -r REAV-A:REV-B <URL to repository> > file.diff
+svn diff -r REAV-A:REV-B <repository URL> > file.diff
 
 2. Generate summary file between revisions REV-A and REV-B needed to create index.htm file:
 
-svn diff -r REV-A:REV-B --summary <URL to repository> > summaryfile.txt
+svn diff -r REV-A:REV-B --summary <repository URL> > summaryfile.txt
 
 3. Generate splited html diff with index.htm:
 
-diff2html.py -i file.dif -s -m summaryfile.txt -u <URL to repository>
+diff2html.py -i file.diff -s -m summaryfile.txt -u <repository URL>
